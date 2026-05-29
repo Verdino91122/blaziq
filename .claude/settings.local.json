@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)",
+      "Bash(del \"c:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\lib\\\\app_colors.dart\")",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
