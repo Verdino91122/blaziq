@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 
 // ── HTML entity decoder ──────────────────────────────────────────────────────
@@ -135,6 +137,10 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   int _wrongCount = 0;
   int _currentStreak = 0;
   int _highestStreak = 0;
+  int _xpEarned = 0;
+  int _coinsEarned = 0;
+  int _xpBefore = 0;
+  Map<String, dynamic>? _userDataSnapshot;
 
   // ── Pre-game countdown ────────────────────────────────────────────────────
   bool _countingDown = false;
@@ -213,6 +219,10 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       _wrongCount = 0;
       _currentStreak = 0;
       _highestStreak = 0;
+      _xpEarned = 0;
+      _coinsEarned = 0;
+      _xpBefore = 0;
+      _userDataSnapshot = null;
       _selectedAnswer = null;
       _answered = false;
       _loadingNextBatch = false;
@@ -220,6 +230,15 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       _countdownValue = 3;
       _countdownOverlayVisible = false;
     });
+
+    // Pre-fetch user data so _endGame() can check firstGameToday without delay.
+    final user = AuthService.currentUser;
+    if (user != null) {
+      UserService.getUserData(user.uid).then((data) {
+        _userDataSnapshot = data;
+      }).catchError((_) {});
+    }
+
     try {
       final questions = await _fetchBatch(_Difficulty.easy);
       if (!mounted) return;
@@ -273,11 +292,38 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   void _endGame() {
     _countdownTimer?.cancel();
     _feedbackTimer?.cancel();
+
     final base = _correctCount * 100;
     final streakBonus = _highestStreak * 50;
     final timeBonus = _timeRemaining.clamp(0, 9999) * 10;
+    final score = base + streakBonus + timeBonus;
+
+    final xp = (_correctCount * 10) + 5 + (_highestStreak * 3);
+
+    final firstGameToday = UserService.isFirstGameToday(_userDataSnapshot);
+    final coins = 10 +
+        (_correctCount * 2) +
+        (_highestStreak >= 5 ? 15 : 0) +
+        (firstGameToday ? 20 : 0);
+
+    final xpBefore = (_userDataSnapshot?['xp'] as int?) ?? 0;
+
+    // Save to Firestore — fire-and-forget
+    final user = AuthService.currentUser;
+    if (user != null) {
+      UserService.saveGameResult(
+        uid: user.uid,
+        score: score,
+        xpEarned: xp,
+        coinsEarned: coins,
+      ).catchError((_) {});
+    }
+
     setState(() {
-      _finalScore = base + streakBonus + timeBonus;
+      _finalScore = score;
+      _xpEarned = xp;
+      _coinsEarned = coins;
+      _xpBefore = xpBefore;
       _phase = _GamePhase.result;
     });
   }
@@ -455,8 +501,6 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   int get _accuracy =>
       _totalAnswered == 0 ? 0 : (_correctCount / _totalAnswered * 100).round();
 
-  int get _xpEarned => _correctCount * 10 + (_finalScore / 100).floor();
-
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -475,6 +519,9 @@ class _SoloGameScreenState extends State<SoloGameScreen>
             highestStreak: _highestStreak,
             accuracy: _accuracy,
             xpEarned: _xpEarned,
+            coinsEarned: _coinsEarned,
+            xpBefore: _xpBefore,
+            isSignedIn: AuthService.currentUser != null,
             onPlayAgain: _startGame,
             onHome: () => Navigator.pop(context),
           ),
@@ -1114,6 +1161,9 @@ class _ResultsView extends StatelessWidget {
   final int highestStreak;
   final int accuracy;
   final int xpEarned;
+  final int coinsEarned;
+  final int xpBefore;
+  final bool isSignedIn;
   final VoidCallback onPlayAgain;
   final VoidCallback onHome;
 
@@ -1123,6 +1173,9 @@ class _ResultsView extends StatelessWidget {
     required this.highestStreak,
     required this.accuracy,
     required this.xpEarned,
+    required this.coinsEarned,
+    required this.xpBefore,
+    required this.isSignedIn,
     required this.onPlayAgain,
     required this.onHome,
   });
@@ -1136,21 +1189,34 @@ class _ResultsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final xpAfter = xpBefore + xpEarned;
+    final levelBefore = UserService.levelForXp(xpBefore);
+    final levelAfter = UserService.levelForXp(xpAfter);
+    final didLevelUp = levelAfter > levelBefore;
+
+    final currThreshold = UserService.xpThreshold(levelAfter);
+    final nextThreshold = UserService.xpThreshold(levelAfter + 1);
+    final rangeSize = nextThreshold - currThreshold;
+    final xpInLevel = xpAfter - currThreshold;
+
+    final beginProgress = (didLevelUp || rangeSize == 0)
+        ? 0.0
+        : ((xpBefore - currThreshold) / rangeSize).clamp(0.0, 1.0);
+    final endProgress =
+        rangeSize > 0 ? (xpInLevel / rangeSize).clamp(0.0, 1.0) : 1.0;
+
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
             const SizedBox(height: 36),
 
-            // ── Trophy icon ──────────────────────────────────────────────
             Container(
               width: 88,
               height: 88,
               decoration: const BoxDecoration(
-                color: AppTheme.blazeGold,
-                shape: BoxShape.circle,
-              ),
+                  color: AppTheme.blazeGold, shape: BoxShape.circle),
               child: const Icon(Icons.emoji_events_rounded,
                   color: AppTheme.voidBlack, size: 48),
             ),
@@ -1158,14 +1224,13 @@ class _ResultsView extends StatelessWidget {
             Text(_headline, style: AppTheme.storeTitle),
             const SizedBox(height: 4),
             Text('GAME OVER', style: AppTheme.sectionHeader),
-
             const SizedBox(height: 24),
 
-            // ── Score card ────────────────────────────────────────────────
+            // Stats card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  vertical: 20, horizontal: 20),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
               decoration: BoxDecoration(
                 color: AppTheme.cardSurface,
                 borderRadius: BorderRadius.circular(16),
@@ -1177,33 +1242,28 @@ class _ResultsView extends StatelessWidget {
                   _ResultRow(
                     label: 'FINAL SCORE',
                     value: '$score',
-                    valueStyle: AppTheme.storeTitle
-                        .copyWith(color: AppTheme.blazeGold),
+                    valueStyle:
+                        AppTheme.storeTitle.copyWith(color: AppTheme.blazeGold),
                   ),
                   const SizedBox(height: 12),
                   const Divider(color: AppTheme.divider, height: 1),
                   const SizedBox(height: 12),
-                  _ResultRow(
-                      label: 'CORRECT ANSWERS',
-                      value: '$correctCount'),
+                  _ResultRow(label: 'CORRECT ANSWERS', value: '$correctCount'),
                   const SizedBox(height: 8),
-                  _ResultRow(
-                      label: 'HIGHEST STREAK',
-                      value: '$highestStreak'),
+                  _ResultRow(label: 'HIGHEST STREAK', value: '$highestStreak'),
                   const SizedBox(height: 8),
-                  _ResultRow(
-                      label: 'ACCURACY', value: '$accuracy%'),
+                  _ResultRow(label: 'ACCURACY', value: '$accuracy%'),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // ── XP card ───────────────────────────────────────────────────
+            // Rewards card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  vertical: 16, horizontal: 20),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
               decoration: BoxDecoration(
                 color: AppTheme.cardSurface,
                 borderRadius: BorderRadius.circular(16),
@@ -1212,55 +1272,124 @@ class _ResultsView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('REWARDS EARNED', style: AppTheme.sectionHeader),
+                  const SizedBox(height: 14),
+
+                  _RewardRow(
+                    icon: Icons.star_rounded,
+                    label: 'SCORE',
+                    value: score,
+                    suffix: ' pts',
+                  ),
+                  const SizedBox(height: 10),
+                  _RewardRow(
+                    icon: Icons.toll_rounded,
+                    label: 'COINS',
+                    value: coinsEarned,
+                    suffix: '',
+                  ),
+                  const SizedBox(height: 14),
+
+                  // XP row with progress bar
+                  Row(
+                    children: [
+                      const Icon(Icons.flash_on_rounded,
+                          color: AppTheme.blazeGold, size: 18),
+                      const SizedBox(width: 8),
+                      Text('XP', style: AppTheme.sectionHeader),
+                      const Spacer(),
+                      if (didLevelUp)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.blazeGold,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'LEVEL UP! → Lv.$levelAfter',
+                            style: AppTheme.caption.copyWith(
+                                color: AppTheme.voidBlack,
+                                fontWeight: FontWeight.w800),
+                          ),
+                        )
+                      else
+                        TweenAnimationBuilder<int>(
+                          tween: IntTween(begin: 0, end: xpEarned),
+                          duration: const Duration(milliseconds: 900),
+                          curve: Curves.easeOut,
+                          builder: (_, val, _) =>
+                              Text('+$val xp', style: AppTheme.rewardText),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TweenAnimationBuilder<double>(
+                    tween:
+                        Tween<double>(begin: beginProgress, end: endProgress),
+                    duration: const Duration(milliseconds: 1200),
+                    curve: Curves.easeOut,
+                    builder: (_, val, _) => ClipRRect(
+                      borderRadius: BorderRadius.circular(5),
+                      child: LinearProgressIndicator(
+                        value: val,
+                        minHeight: 10,
+                        backgroundColor: AppTheme.voidBlack,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppTheme.blazeGold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('XP EARNED', style: AppTheme.sectionHeader),
                       Text(
-                        '+$xpEarned XP',
-                        style: AppTheme.rewardText,
+                        'Lv.$levelAfter · ${UserService.titleForLevel(levelAfter)}',
+                        style: AppTheme.caption,
                       ),
+                      Text('$xpInLevel / $rangeSize xp',
+                          style: AppTheme.caption),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  TweenAnimationBuilder<double>(
-                    tween: Tween<double>(
-                      begin: 0,
-                      end: (xpEarned / 100.0).clamp(0.0, 1.0),
-                    ),
-                    duration: const Duration(milliseconds: 1200),
-                    curve: Curves.easeOut,
-                    builder: (context, value, _) {
-                      return Stack(
-                        children: [
-                          Container(
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: AppTheme.voidBlack,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          FractionallySizedBox(
-                            widthFactor: value,
-                            child: Container(
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: AppTheme.blazeGold,
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 28),
+            // Sign-in prompt
+            if (!isSignedIn) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.blazeGold.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: AppTheme.blazeGold.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_outline_rounded,
+                        color: AppTheme.blazeGold, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Sign in to save your score and rewards',
+                        style: AppTheme.caption
+                            .copyWith(color: AppTheme.blazeGold, fontSize: 12),
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded,
+                        color: AppTheme.blazeGold, size: 14),
+                  ],
+                ),
+              ),
+            ],
 
-            // ── Play again ────────────────────────────────────────────────
+            const SizedBox(height: 24),
+
             GestureDetector(
               onTap: onPlayAgain,
               child: Container(
@@ -1270,17 +1399,12 @@ class _ResultsView extends StatelessWidget {
                   color: AppTheme.blazeGold,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Text(
-                  'PLAY AGAIN',
-                  textAlign: TextAlign.center,
-                  style: AppTheme.buttonLabel.copyWith(fontSize: 18),
-                ),
+                child: Text('PLAY AGAIN',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.buttonLabel.copyWith(fontSize: 18)),
               ),
             ),
-
             const SizedBox(height: 12),
-
-            // ── Home ──────────────────────────────────────────────────────
             GestureDetector(
               onTap: onHome,
               child: Container(
@@ -1290,19 +1414,51 @@ class _ResultsView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppTheme.divider, width: 1),
                 ),
-                child: Text(
-                  'HOME',
-                  textAlign: TextAlign.center,
-                  style: AppTheme.buttonLabel
-                      .copyWith(color: AppTheme.mutedText, fontSize: 16),
-                ),
+                child: Text('HOME',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.buttonLabel
+                        .copyWith(color: AppTheme.mutedText, fontSize: 16)),
               ),
             ),
-
             const SizedBox(height: 32),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Reward row ────────────────────────────────────────────────────────────────
+
+class _RewardRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int value;
+  final String suffix;
+
+  const _RewardRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.suffix,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.blazeGold, size: 18),
+        const SizedBox(width: 8),
+        Text(label, style: AppTheme.sectionHeader),
+        const Spacer(),
+        TweenAnimationBuilder<int>(
+          tween: IntTween(begin: 0, end: value),
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeOut,
+          builder: (_, val, _) =>
+              Text('+$val$suffix', style: AppTheme.rewardText),
+        ),
+      ],
     );
   }
 }

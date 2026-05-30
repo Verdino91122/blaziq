@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "578149383599",
+    "project_id": "blaziq-1822",
+    "storage_bucket": "blaziq-1822.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:578149383599:android:39902a5a3b5c9c0c02c35a",
+        "android_client_info": {
+          "package_name": "com.blaziq.blaziq"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "578149383599-ccb9q86k5ujejgft0jm8qigahu9qnc2u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.blaziq.blaziq",
+            "certificate_hash": "76625286931ee8a3f55c5de4adc701d87b62ba7c"
+          }
+        },
+        {
+          "client_id": "578149383599-rrms42c5hhkk2jtfvrl2n7qaujc824n6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfC6hW54V1MLJmjsGhP__z5trNBcluGCU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "578149383599-rrms42c5hhkk2jtfvrl2n7qaujc824n6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

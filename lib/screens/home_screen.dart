@@ -1,4 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import 'solo_game_screen.dart';
 
@@ -37,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.arenaBlack,
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
             const _HeaderBar(),
@@ -70,88 +75,94 @@ class _HeaderBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: AuthService.authStateChanges,
+      builder: (context, authSnap) {
+        final user = authSnap.data;
+        if (user == null) {
+          return _buildBar(context, coins: 0, xp: 0, level: 1, photoUrl: null);
+        }
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: UserService.userStream(user.uid),
+          builder: (context, snap) {
+            final data = snap.data?.data();
+            return _buildBar(
+              context,
+              coins: (data?['coins'] as int?) ?? 0,
+              xp: (data?['xp'] as int?) ?? 0,
+              level: (data?['level'] as int?) ?? 1,
+              photoUrl: user.photoURL,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBar(
+    BuildContext context, {
+    required int coins,
+    required int xp,
+    required int level,
+    required String? photoUrl,
+  }) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 10),
       color: AppTheme.headerBar,
       child: Row(
         children: [
+          // Avatar
           Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppTheme.cardSurface,
               shape: BoxShape.circle,
               border: Border.all(color: AppTheme.blazeGold, width: 1.5),
             ),
-            child: const Icon(
-              Icons.person,
-              color: AppTheme.mutedText,
-              size: 20,
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: AppTheme.cardSurface,
+              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+              child: photoUrl == null
+                  ? const Icon(Icons.person, color: AppTheme.mutedText, size: 20)
+                  : null,
             ),
           ),
           const SizedBox(width: 10),
-          const _StatChip(
-            icon: Icons.star_rounded,
-            iconColor: AppTheme.blazeGold,
-            value: '67',
-          ),
-          const SizedBox(width: 6),
-          const _StatChip(
-            icon: Icons.extension,
-            iconColor: AppTheme.blazeGold,
-            value: '6',
-          ),
-          const SizedBox(width: 6),
-          const _StatChip(
-            icon: Icons.bolt,
-            iconColor: AppTheme.blazeGold,
-            value: '4',
-          ),
-          const SizedBox(width: 6),
-          const _StatChip(
-            icon: Icons.shield_rounded,
-            iconColor: AppTheme.blazeGold,
-            value: '6',
+          // Coins
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star_rounded, color: AppTheme.blazeGold, size: 16),
+              const SizedBox(width: 3),
+              Text('$coins', style: AppTheme.statValue),
+            ],
           ),
           const Spacer(),
-          const _XpBar(current: 150, max: 500),
+          // XP progress bar
+          _XpBar(xp: xp, level: level),
         ],
       ),
     );
   }
 }
 
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String value;
-
-  const _StatChip({
-    required this.icon,
-    required this.iconColor,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: iconColor, size: 16),
-        const SizedBox(width: 2),
-        Text(value, style: AppTheme.statValue),
-      ],
-    );
-  }
-}
-
 class _XpBar extends StatelessWidget {
-  final int current;
-  final int max;
-  const _XpBar({required this.current, required this.max});
+  final int xp;
+  final int level;
+
+  const _XpBar({required this.xp, required this.level});
 
   @override
   Widget build(BuildContext context) {
+    final currThreshold = UserService.xpThreshold(level);
+    final nextThreshold = UserService.xpThreshold(level + 1);
+    final rangeSize = nextThreshold - currThreshold;
+    final xpInLevel = xp - currThreshold;
+    final progress =
+        rangeSize > 0 ? (xpInLevel / rangeSize).clamp(0.0, 1.0) : 1.0;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -161,21 +172,29 @@ class _XpBar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('$current/$max', style: AppTheme.caption),
+            Text(
+              'Lv.$level · ${UserService.titleForLevel(level)}',
+              style: AppTheme.caption,
+            ),
             const SizedBox(height: 2),
             SizedBox(
-              width: 56,
+              width: 72,
               height: 5,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(3),
                 child: LinearProgressIndicator(
-                  value: current / max,
+                  value: progress,
                   backgroundColor: AppTheme.cardSurface,
                   valueColor: const AlwaysStoppedAnimation<Color>(
                     AppTheme.blazeGold,
                   ),
                 ),
               ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              '$xpInLevel / $rangeSize xp',
+              style: AppTheme.caption.copyWith(fontSize: 9),
             ),
           ],
         ),

@@ -1,5 +1,8 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'firebase_options.dart';
+import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
@@ -7,12 +10,19 @@ import 'screens/rank_screen.dart';
 import 'screens/store_screen.dart';
 import 'screens/menu_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  final authError = await AuthService.ensureAnonymousSignIn();
+  if (authError != null) debugPrint('[Blaziq] Anonymous auth failed: $authError');
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarContrastEnforced: false,
   ));
   runApp(const BlaziQApp());
 }

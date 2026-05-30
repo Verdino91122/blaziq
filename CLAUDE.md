@@ -8,7 +8,7 @@ Target platforms: iOS and Android (primary), Web (secondary)
 
 ## Tech stack
 - Flutter (Dart)
-- Firebase Auth (Google Sign-In only for now)
+- Firebase Auth (Anonymous on first launch + Google Sign-In for account linking)
 - Firebase Firestore (database + leaderboard + user profiles)
 - Open Trivia DB API (https://opentdb.com/api.php) for questions
 - http package for API calls (handles both mobile and web)
@@ -90,17 +90,19 @@ Always refer to these images when building or modifying each screen.
 - Always decode HTML entities in questions and answers
 
 ### Profile Screen (designs/profile_screen.png)
-- If NOT signed in:
-  - Blaziq logo at top
-  - "SAVE YOUR PROGRESS!" heading
-  - Subtitle about saving game and unlocking leaderboards
+- The app always has a signed-in user (anonymous or Google) — a pure signed-out
+  state never appears
+- If anonymous (guest):
+  - Gold "SAVE YOUR PROGRESS" banner at top (lock icon + subtitle)
+  - Guest avatar (person icon, muted ring)
+  - Guest_XXXXXX username + "Guest account" subtitle read from Firestore
+  - Stats grid: games played, best score, coins, XP level — live from Firestore
   - Google Sign-In button (styled, not plain default)
   - "Reward: +200 coins for linking!" note
-  - "Link manually (Email)" text link at bottom
-- If signed in:
-  - Avatar circle, username, email
-  - Stats: total games, best score, coins, XP level, current streak
-  - Sign out option
+- If signed in with Google:
+  - Google profile photo avatar (gold ring), username, email — live from Firestore
+  - Stats grid: games played, best score, coins, XP level
+  - Sign out button (signs out → immediately re-enters anonymous auth)
 
 ### Rank Screen (designs/rank_screen.png)
 - Title: "LEADERBOARD"
@@ -173,6 +175,41 @@ Collection: leaderboard
     - country: string
     - avatarUrl: string
     - updatedAt: timestamp
+
+## Scoring & Rewards System
+
+Three separate currencies are awarded at the end of every solo game.
+
+### SCORE (leaderboard only)
+```
+base        = correct_answers × 100
+streak      = highest_streak × 50
+time        = remaining_seconds × 10
+final_score = base + streak + time
+```
+Score is shown live during the game and stored as `bestScore` in Firestore (updated only if higher than stored value). It does NOT appear in the home header bar.
+
+### XP (level progression)
+```
+xp_earned = (correct_answers × 10) + 5 + (highest_streak × 3)
+```
+The flat +5 is the per-game completion reward. XP accumulates in the `xp` field; `level` is recalculated on every save using:
+- `xpThreshold(n) = round(100 × n × 1.5)` — cumulative XP to reach level n
+- Level 1 = 0 XP, Level 2 = 300 XP, Level 3 = 450 XP, etc.
+
+Level titles: 1–4 ROOKIE · 5–9 CHALLENGER · 10–19 EXPERT · 20–49 MASTER · 50+ LEGEND
+
+### COINS (store currency)
+```
+coins_earned = 10 + (correct_answers × 2) + (highest_streak ≥ 5 ? 15 : 0) + (first_game_today ? 20 : 0)
+```
+`first_game_today` is determined by comparing `lastPlayedDate` (stored as 'yyyy-MM-dd' string) to today's date.
+
+### Results Screen
+Shows all three rewards with count-up animations. XP section includes an animated progress bar showing movement within the current level, plus a "LEVEL UP!" badge if a level threshold was crossed. Non-signed-in players see a sign-in prompt but rewards are not saved.
+
+### Home Header Bar
+Shows only: user avatar · coins (live from Firestore) · XP progress bar with level number and title. Power-ups and jokers are reserved for a dedicated later phase.
 
 ## Kahoot Mode (Phase 8 — planned last)
 A live quiz mode where one user hosts a session and multiple players
@@ -259,85 +296,31 @@ lib/
   - ✅ Timer bump animation (scale + color flash when floating text arrives)
   - ✅ Streak indicator as Stack/Positioned overlay (never shifts layout)
   - ✅ Developer cheat mode (invisible tap zone on home logo, 5 cheat buttons in game)
-  - ✅ Results screen with XP calculation and animated progress bar
-  - ⏳ Save score to Firestore (blocked on Phase 3)
+  - ✅ Results screen with full 3-currency rewards (score, XP, coins)
+- Phase 3: Firebase Auth + Google Sign-In + Anonymous Auth — COMPLETE
+  - ✅ firebase_core, firebase_auth, cloud_firestore, google_sign_in packages added
+  - ✅ Firebase project blaziq-1822 configured (firebase_options.dart + google-services.json)
+  - ✅ Google Services Gradle plugin applied (Kotlin DSL .kts files)
+  - ✅ auth_service.dart — anonymous sign-in on first launch, Google Sign-In with account linking,
+       migration fallback (credential-already-in-use → merge anon data → sign in as Google user),
+       sign-out re-enters anonymous auth so app always has a UID
+  - ✅ user_service.dart — ensureUserDoc handles anon (Guest_XXXXXX) and Google users,
+       upgradeToGoogle (updates doc + awards 200 coin linking bonus),
+       mergeAnonData (migrates XP/games/best score to Google account),
+       saveGameResult, level helpers
+  - ✅ profile_screen.dart — anonymous users see stats + SAVE YOUR PROGRESS banner + Google sign-in;
+       Google users see full signed-in profile; signed-out state never shown
+  - ✅ Three-currency scoring system: score, XP (with level-up), coins (with daily bonus)
+  - ✅ Home header bar simplified: avatar + coins + XP bar, live from Firestore
+  - ✅ Results screen saves rewards to Firestore after every game (anon and Google)
 
-### In Progress
-- Phase 3: Firebase Auth + Google Sign-In
-  (see setup checklist below)
+### Next
+- Phase 4: Solo Leaderboard (write to `leaderboard` collection after each game + wire Rank screen to live Firestore data)
 
 ### Pending
-- Phase 4: Solo Leaderboard (save solo scores, show on Rank screen)
 - Phase 5: Polish + Google Play Store submission (get user feedback)
 - Phase 6: Friend mode (room codes + real-time Firestore)
 - Phase 7: Online matchmaking (random opponent + online leaderboard)
 - Phase 8: Kahoot mode (host + join + manual questions)
 - Phase 9: Store + in-app purchases
 - Phase 10: Final polish, sounds, haptics, App Store (iOS) submission
-
-## Phase 3 Setup Checklist
-
-### Firebase is NOT yet configured — zero Firebase files exist in this project.
-
-### Step 1 — Firebase Console (manual, outside code)
-- Create Firebase project at console.firebase.google.com
-- Enable Authentication → Sign-in method → Google (enable it)
-- Register Android app: package name `com.blaziq.blaziq`
-  - SHA-1 required for Google Sign-In:
-    `keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android`
-  - Download `google-services.json` → place in `android/app/`
-- Register iOS app: bundle ID `com.blaziq.blaziq`
-  - Download `GoogleService-Info.plist` → place in `ios/Runner/` (add via Xcode)
-- Register Web app → copy firebaseConfig object (used in firebase_options.dart)
-
-### Step 2 — FlutterFire CLI (generates firebase_options.dart)
-- `dart pub global activate flutterfire_cli`
-- `flutterfire configure --project=<your-firebase-project-id>`
-- This creates `lib/firebase_options.dart` automatically
-
-### Step 3 — Packages to add (ask user before adding)
-- `firebase_core` — required base for all Firebase packages
-- `firebase_auth` — authentication (includes Google Sign-In on web)
-- `cloud_firestore` — Firestore database
-- `google_sign_in` — native Google Sign-In on Android/iOS (not needed for web)
-
-### Step 4 — Android Gradle changes (Kotlin DSL)
-The project uses `.kts` Gradle files. Google Services plugin must be added:
-- In `android/settings.gradle.kts` plugins block: add
-  `id("com.google.gms.google-services") version "4.4.2" apply false`
-- In `android/app/build.gradle.kts` plugins block: add
-  `id("com.google.gms.google-services")`
-
-### Step 5 — iOS URL scheme
-- Open `ios/Runner/Info.plist`
-- Add `REVERSED_CLIENT_ID` from `GoogleService-Info.plist` as a URL scheme
-  (required for Google Sign-In callback on iOS)
-
-### Step 6 — Web index.html
-- FlutterFire CLI handles this automatically via firebase_options.dart
-- No manual script tags needed if using firebase_options.dart
-
-### Step 7 — main.dart changes
-```dart
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const BlazeApp());
-}
-```
-
-### Step 8 — New files to create
-- `lib/services/auth_service.dart` — Google Sign-In logic, sign-out
-- `lib/services/user_service.dart` — Firestore user profile CRUD
-  - On first sign-in: create user doc with coins: 200, jokers: 0, xp: 0, level: 1
-- Update `lib/screens/profile_screen.dart` — wire up auth state (StreamBuilder on FirebaseAuth.instance.authStateChanges())
-- Update `lib/screens/solo_game_screen.dart` — save bestScore to Firestore after results screen
-
-### Notes
-- `google_sign_in` minSdk requirement is 21 — project already fine (Flutter default)
-- On web: `firebase_auth` handles Google Sign-In via signInWithPopup, no google_sign_in package needed
-- Firestore security rules: users can only read/write their own `users/{uid}` document
-- leaderboard collection: readable by all, writable only by the authenticated user for their own doc
