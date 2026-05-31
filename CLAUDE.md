@@ -12,6 +12,10 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - Firebase Firestore (database + leaderboard + user profiles)
 - Open Trivia DB API (https://opentdb.com/api.php) for questions
 - http package for API calls (handles both mobile and web)
+- flutter_svg ^2.0.0 for SVG nav icons
+- google_fonts ^8.0.0 for New Amsterdam font
+- flutter_native_splash ^2.4.1 for native splash screen (runtime dep)
+- flutter_launcher_icons ^0.14.1 for app icon generation (dev dep)
 - State management: Provider or simple StatefulWidget — nothing heavier
 
 ## Design System
@@ -24,8 +28,8 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - Muted text: #888888
 - Corner radius: 12–16px rounded cards
 - Headings: bold, uppercase, wide letter spacing
-- Font: Google Font "Rajdhani" for all text
-- Bottom nav bar: dark background, gold for selected icon
+- Font: Google Font "New Amsterdam" for all text (google_fonts ^8.0.0)
+- Bottom nav bar: dark background, gold sliding circle indicator for selected tab
 
 ## Brand Identity
 - App name: Blaziq
@@ -48,15 +52,18 @@ Always refer to these images when building or modifying each screen.
 1. Profile
 2. Rank
 3. Home (default, center tab, slightly larger icon when selected)
-4. Store
-5. Menu
+4. Shop
+5. Settings
+
+Bottom nav bar: 77px height, SVG icons, sliding gold circle behind selected tab.
+Selected tab: icon only (no label). Unselected: icon + label below.
 
 ## Screen Details
 
 ### Home Screen (designs/home_screen.png)
 - Header bar: user avatar (circle, top left), coins count with star icon,
-  jokers count, XP progress bar (e.g. 150/500)
-- Center: Blaziq brain logo + "SELECT A MODE" text
+  XP progress bar with level number and title — all live from Firestore
+- Center: Blaziq logo (assets/images/inapp_logo.png, 80×80) + "SELECT A MODE" text
 - Invisible GestureDetector same size as logo, to the right of it —
   toggles developer cheat mode in solo game screen
 - Swipeable horizontal carousel with 3 mode cards:
@@ -69,21 +76,34 @@ Always refer to these images when building or modifying each screen.
 - Endless time-based mode — no fixed question limit
 - Timer starts at 30 seconds, displayed as circular countdown
 - Pre-game countdown overlay: 3, 2, 1, GO! before game starts
-- Correct answer: +4s (+6s at 3 streak, +8s at 5+ streak), +100 pts
-- Wrong answer: -3s, streak resets
+  - Shows a muted 'CANCEL' button below the number (hidden on GO!)
+  - Tapping CANCEL returns to home screen immediately
+  - Android back button is blocked during countdown (PopScope canPop: false)
+- Quit button: X icon (top left) — tapping shows a confirmation dialog;
+  timer keeps running while dialog is open (do NOT pause it);
+  dialog: 'Quit Game?' / 'Your progress will be lost' /
+  gold 'Keep Playing' button (dismisses) + muted 'Quit' button (navigates back)
+- Android back button during game: triggers the same quit confirmation dialog
+- Correct answer time bonus (streak resets to 0 on wrong answer):
+  - Streak 1–2: +4s
+  - Streak 3: +6s
+  - Streak 4: +8s
+  - Streak 5+: +10s
+- Wrong answer: -3s, streak resets to 0 (next correct is back to +4s)
 - Difficulty escalation: Easy → Medium (5 correct) → Hard (10 correct)
-- Floating feedback animation: '+4s' or '-3s' flies up to timer on answer
+- Floating feedback animation: '+4s', '+6s', '+8s', '+10s', or '-3s' flies up to timer on answer
 - Timer bump animation when floating text arrives at timer
 - Streak indicator floats above layout using Stack/Positioned
 - Developer cheat mode: toggled by invisible button right of logo
-- Scoring formula at game end:
+- Scoring formula at game end (see Scoring & Rewards System section for full detail):
   - base_points = correct_answers × 100
   - streak_bonus = highest_streak × 50
   - time_bonus = remaining_seconds × 10
   - final_score = base_points + streak_bonus + time_bonus
-  - xp_earned = correct_answers × 10 + (final_score / 100).floor()
-- Results screen: title based on performance, final score, correct count,
-  highest streak, accuracy %, XP earned with animated progress bar
+- Results screen: headline based on performance, final score, correct count,
+  highest streak, accuracy %, score/coins/XP earned with count-up animations,
+  XP progress bar, LEVEL UP! badge if threshold crossed
+- API rate limit: auto-retry once after 5s on HTTP 429 (OpenTDB rate limit)
 - Use kIsWeb with corsproxy.io prefix for web builds:
   final baseUrl = 'https://opentdb.com/api.php?amount=10&type=multiple';
   final url = kIsWeb ? 'https://corsproxy.io/?$baseUrl' : baseUrl;
@@ -102,17 +122,23 @@ Always refer to these images when building or modifying each screen.
 - If signed in with Google:
   - Google profile photo avatar (gold ring), username, email — live from Firestore
   - Stats grid: games played, best score, coins, XP level
-  - Sign out button (signs out → immediately re-enters anonymous auth)
+  - Sign out button — shows confirmation dialog before signing out; on confirm,
+    signs out and immediately re-enters anonymous auth
 
 ### Rank Screen (designs/rank_screen.png)
 - Title: "LEADERBOARD"
 - 3 filter tabs: Worldwide | Canada | Friends
-- All tabs show Solo mode best scores until online mode is built
+- Worldwide: all players ordered by score desc (live from Firestore leaderboard collection)
+- Canada: client-side filter where country == 'CA'; shows empty state if none
+- Friends: "Coming Soon" placeholder
 - Top 3 as podium: 2nd left, 1st center (taller card), 3rd right
-  Each shows: avatar, name, score, rank badge with laurel
+  If fewer than 3 players exist, render only those that exist (no empty slots)
+  Each podium card shows: avatar (NetworkImage if avatarUrl set, else initials), name, score, rank badge
 - Players 4th+ as scrollable list below
   Each row: rank number, avatar, username, score
-- Data pulled from Firestore "leaderboard" collection
+- Current user's row highlighted: gold border + subtle gold background tint (both podium and list)
+- leaderboard collection updated by saveGameResult() using effectiveBest = max(score, currentBest)
+  so existing users are seeded immediately even if current game doesn't beat their personal best
 - When online mode is added later, leaderboard will switch to online ratings
 
 ### Store Screen (designs/store_screen.png)
@@ -165,14 +191,15 @@ Collection: users
     - level: number (default 1)
     - gamesPlayed: number
     - bestScore: number (solo mode best score)
-    - country: string
+    - country: string (default 'CA' — will be locale-detected in a future phase)
+    - lastPlayedDate: string (yyyy-MM-dd, for daily bonus)
     - createdAt: timestamp
 
 Collection: leaderboard
   Document: {uid}
     - username: string
     - score: number (solo best score for now, online rating later)
-    - country: string
+    - country: string (default 'CA')
     - avatarUrl: string
     - updatedAt: timestamp
 
@@ -187,13 +214,15 @@ streak      = highest_streak × 50
 time        = remaining_seconds × 10
 final_score = base + streak + time
 ```
-Score is shown live during the game and stored as `bestScore` in Firestore (updated only if higher than stored value). It does NOT appear in the home header bar.
+Score is stored as `bestScore` in Firestore (updated only if higher than stored value).
+It does NOT appear in the home header bar.
 
 ### XP (level progression)
 ```
 xp_earned = (correct_answers × 10) + 5 + (highest_streak × 3)
 ```
-The flat +5 is the per-game completion reward. XP accumulates in the `xp` field; `level` is recalculated on every save using:
+The flat +5 is the per-game completion reward. XP accumulates in the `xp` field;
+`level` is recalculated on every save using:
 - `xpThreshold(n) = round(100 × n × 1.5)` — cumulative XP to reach level n
 - Level 1 = 0 XP, Level 2 = 300 XP, Level 3 = 450 XP, etc.
 
@@ -203,13 +232,17 @@ Level titles: 1–4 ROOKIE · 5–9 CHALLENGER · 10–19 EXPERT · 20–49 MAST
 ```
 coins_earned = 10 + (correct_answers × 2) + (highest_streak ≥ 5 ? 15 : 0) + (first_game_today ? 20 : 0)
 ```
-`first_game_today` is determined by comparing `lastPlayedDate` (stored as 'yyyy-MM-dd' string) to today's date.
+`first_game_today` is determined by comparing `lastPlayedDate` to today's date.
 
 ### Results Screen
-Shows all three rewards with count-up animations. XP section includes an animated progress bar showing movement within the current level, plus a "LEVEL UP!" badge if a level threshold was crossed. Non-signed-in players see a sign-in prompt but rewards are not saved.
+Shows all three rewards with count-up animations. XP section includes an animated
+progress bar showing movement within the current level, plus a "LEVEL UP!" badge if
+a level threshold was crossed. Anonymous users see rewards displayed but nothing is
+saved — they see a sign-in prompt instead.
 
 ### Home Header Bar
-Shows only: user avatar · coins (live from Firestore) · XP progress bar with level number and title. Power-ups and jokers are reserved for a dedicated later phase.
+Shows only: user avatar · coins (live from Firestore) · XP progress bar with level
+number and title. Power-ups and jokers are reserved for a later phase.
 
 ## Kahoot Mode (Phase 8 — planned last)
 A live quiz mode where one user hosts a session and multiple players
@@ -222,13 +255,11 @@ Player features:
 - Join via room code
 - Answer on timer
 - See live leaderboard after each question
-This is the most complex feature — build after friend and online modes
-are complete and validated.
+This is the most complex feature — build after friend and online modes are complete.
 
 ## Web Builds (Chrome testing)
 - Use kIsWeb from flutter/foundation.dart to detect web platform
 - Prefix Open Trivia DB API URL with https://corsproxy.io/? on web
-- AndroidManifest.xml internet permission is irrelevant for web builds
 - All features should work on both web and mobile
 
 ## Rules for Claude Code (IMPORTANT)
@@ -259,7 +290,7 @@ are complete and validated.
 
 ## Folder Structure (lib/)
 lib/
-├── main.dart
+├── main.dart               ← app entry + MainShell + _BottomNav (SVG, sliding circle)
 ├── theme/
 │   └── app_theme.dart
 ├── screens/
@@ -269,12 +300,9 @@ lib/
 │   ├── store_screen.dart
 │   ├── menu_screen.dart
 │   └── solo_game_screen.dart
-├── widgets/
-│   ├── bottom_nav_bar.dart
-│   ├── mode_card.dart
-│   └── answer_button.dart
-└── models/
-    └── question.dart
+└── services/
+    ├── auth_service.dart
+    └── user_service.dart
 
 ## Project Status
 
@@ -284,8 +312,6 @@ lib/
 - Designs folder with 5 Figma screen references added
 - Brand identity defined (colors, logo concept, typography)
 - Phase 1: App shell — navigation bar and all 5 screen layouts
-- app_colors.dart removed — all colors centralized in app_theme.dart
-- Store screen redesigned to match dark navy identity
 - Phase 2: Solo game mode (Open Trivia DB API + game logic) — COMPLETE
   - ✅ Question fetching with HTML entity decoding
   - ✅ Endless time-based gameplay
@@ -311,14 +337,37 @@ lib/
   - ✅ profile_screen.dart — anonymous users see stats + SAVE YOUR PROGRESS banner + Google sign-in;
        Google users see full signed-in profile; signed-out state never shown
   - ✅ Three-currency scoring system: score, XP (with level-up), coins (with daily bonus)
-  - ✅ Home header bar simplified: avatar + coins + XP bar, live from Firestore
+  - ✅ Home header bar: avatar + coins + XP bar, live from Firestore
   - ✅ Results screen saves rewards to Firestore after every game (anon and Google)
+  - ✅ Font: New Amsterdam (google_fonts ^8.0.0)
+  - ✅ Nav labels: Shop, Settings
+  - ✅ X quit button + confirmation dialog (timer runs during dialog)
+  - ✅ Sign-out confirmation dialog on profile screen
+  - ✅ Bottom nav bar: SVG icons, 77px, sliding gold circle, selected = icon only
+- Phase 4: Solo Leaderboard — COMPLETE
+  - ✅ leaderboard Firestore collection — written by saveGameResult() after every game
+  - ✅ effectiveBest = max(score, currentBest) seeds existing users immediately
+  - ✅ updateLeaderboard() guards against unnecessary writes (only writes on new best)
+  - ✅ leaderboardStream() — live ordered query powering Rank screen
+  - ✅ Rank screen: StreamBuilder, podium (top 3) + scrollable list (4th+)
+  - ✅ Worldwide tab: all players; Canada tab: country == 'CA'; Friends: coming soon
+  - ✅ country defaults to 'CA' for all new docs; existing users seeded with 'CA' on next game
+  - ✅ Current user highlighted: gold border + tint in both podium and list rows
+  - ✅ Avatar: NetworkImage when avatarUrl set, initials fallback with deterministic color
+  - ✅ Loading spinner, empty state, coming-soon state all handled
+  - ✅ Pre-game countdown: CANCEL button + Android back button blocked (PopScope)
+  - ✅ Android back button during game: triggers quit confirmation dialog
+  - ✅ OpenTDB HTTP 429 auto-retry after 5s (handles rapid game restarts)
+- App icon + splash screen — COMPLETE
+  - ✅ flutter_launcher_icons: adaptive icon (foreground + #1A1A2E background), Android + iOS
+  - ✅ flutter_native_splash: full-screen #1A1A2E with gold bolt logo, Android 12 splash API supported
+  - ✅ Splash preserved until Firebase + anonymous auth are ready, then removed
+  - ✅ Home screen logo replaced with assets/images/inapp_logo.png (Image.asset, 80×80)
 
 ### Next
-- Phase 4: Solo Leaderboard (write to `leaderboard` collection after each game + wire Rank screen to live Firestore data)
+- Phase 5: Polish + Google Play Store submission
 
 ### Pending
-- Phase 5: Polish + Google Play Store submission (get user feedback)
 - Phase 6: Friend mode (room codes + real-time Firestore)
 - Phase 7: Online matchmaking (random opponent + online leaderboard)
 - Phase 8: Kahoot mode (host + join + manual questions)

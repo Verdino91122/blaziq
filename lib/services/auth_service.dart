@@ -17,14 +17,13 @@ class AuthService {
       if (_auth.currentUser == null) {
         await _auth.signInAnonymously();
       }
-      final user = _auth.currentUser;
-      if (user != null) {
-        await UserService.ensureUserDoc(user);
-        return null; // success
+      if (_auth.currentUser == null) {
+        return 'Auth succeeded but currentUser is null';
       }
-      return 'Auth succeeded but currentUser is null';
+      // Firestore doc is NOT created here — it is created lazily in
+      // saveGameResult() only when the user actually completes a game.
+      return null;
     } on FirebaseAuthException catch (e) {
-      // Returns the error code so main() can surface it to the developer.
       // Most common cause: Anonymous sign-in not enabled in Firebase Console →
       // Authentication → Sign-in method → Anonymous → Enable.
       return 'FirebaseAuth error: ${e.code} — ${e.message}';

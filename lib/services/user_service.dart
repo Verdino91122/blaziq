@@ -24,7 +24,7 @@ class UserService {
         'level': 1,
         'gamesPlayed': 0,
         'bestScore': 0,
-        'country': '',
+        'country': 'CA',
         'isAnonymous': user.isAnonymous,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -137,45 +137,44 @@ class UserService {
 
   // ── Game result save ──────────────────────────────────────────────────────
 
-  /// Writes game rewards to the user's Firestore document:
-  /// - Increments coins and gamesPlayed
-  /// - Adds xpEarned to total XP and recalculates level
-  /// - Updates bestScore only if [score] is higher
-  /// - Stores lastPlayedDate for the daily coin bonus
+  /// Writes game rewards to the user's Firestore document and updates the
+  /// leaderboard if the score beats the player's previous best.
   static Future<void> saveGameResult({
     required String uid,
     required int score,
     required int xpEarned,
     required int coinsEarned,
+    required bool isAnonymous,
+    required String avatarUrl,
   }) async {
     final ref = _db.collection('users').doc(uid);
-    final doc = await ref.get();
-    final data = doc.data() ?? {};
 
+    // Lazy creation: create the Firestore doc on first completed game if it
+    // doesn't exist yet. This is the only place docs are created for anon users.
+    final doc = await ref.get();
+    if (!doc.exists) {
+      final username = isAnonymous ? 'Guest_${uid.substring(0, 6)}' : 'Player';
+      await ref.set({
+        'username': username,
+        'email': '',
+        'coins': 200,
+        'jokers': 0,
+        'xp': 0,
+        'level': 1,
+        'gamesPlayed': 0,
+        'bestScore': 0,
+        'country': 'CA',
+        'isAnonymous': isAnonymous,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    final fresh = await ref.get();
+    final data = fresh.data() ?? {};
     final currentXp = (data['xp'] as int?) ?? 0;
     final currentBest = (data['bestScore'] as int?) ?? 0;
     final newXp = currentXp + xpEarned;
     final newLevel = levelForXp(newXp);
-
-    if (!doc.exists) {
-      // Doc missing (e.g. ensureUserDoc never completed) — create it with
-      // the starting 200 coins plus this game's rewards so nothing is lost.
-      await ref.set({
-        'username': 'Guest_${uid.substring(0, 6)}',
-        'email': '',
-        'coins': 200 + coinsEarned,
-        'jokers': 0,
-        'xp': newXp,
-        'level': newLevel,
-        'gamesPlayed': 1,
-        'bestScore': score,
-        'country': '',
-        'isAnonymous': true,
-        'lastPlayedDate': _todayString(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      return;
-    }
 
     final updates = <String, dynamic>{
       'xp': newXp,
@@ -189,5 +188,56 @@ class UserService {
     }
 
     await ref.update(updates);
+
+    // Always sync the leaderboard using the effective best score.
+    // Using max(score, currentBest) ensures existing users whose bestScore
+    // predates Phase 4 get a leaderboard entry seeded immediately, even when
+    // the current game doesn't beat their personal best.
+    final effectiveBest = score > currentBest ? score : currentBest;
+    if (effectiveBest > 0) {
+      final username = (data['username'] as String?) ?? 'Player';
+      final rawCountry = (data['country'] as String?) ?? '';
+      final country = rawCountry.isNotEmpty ? rawCountry : 'CA';
+      await updateLeaderboard(
+        uid: uid,
+        score: effectiveBest,
+        username: username,
+        avatarUrl: avatarUrl,
+        country: country,
+      );
+    }
+  }
+
+  // ── Leaderboard ───────────────────────────────────────────────────────────
+
+  /// Writes to the leaderboard collection only if [score] beats the existing
+  /// entry. Safe to call redundantly — the check guards against unnecessary writes.
+  static Future<void> updateLeaderboard({
+    required String uid,
+    required int score,
+    required String username,
+    required String avatarUrl,
+    required String country,
+  }) async {
+    final ref = _db.collection('leaderboard').doc(uid);
+    final existing = await ref.get();
+    final currentScore = (existing.data()?['score'] as num?)?.toInt() ?? 0;
+    if (!existing.exists || score > currentScore) {
+      await ref.set({
+        'username': username,
+        'score': score,
+        'country': country,
+        'avatarUrl': avatarUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  /// Live stream of the leaderboard collection ordered by score descending.
+  static Stream<QuerySnapshot<Map<String, dynamic>>> leaderboardStream() {
+    return _db
+        .collection('leaderboard')
+        .orderBy('score', descending: true)
+        .snapshots();
   }
 }

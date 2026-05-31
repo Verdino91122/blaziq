@@ -6,7 +6,17 @@
       "Bash(del \"c:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\lib\\\\app_colors.dart\")",
       "Bash(python -c ' *)",
       "mcp__plugin_firebase_firebase__firebase_get_environment",
-      "mcp__plugin_firebase_firebase__firebase_update_environment"
+      "mcp__plugin_firebase_firebase__firebase_update_environment",
+      "Bash(grep -ri \"newAmsterdam\\\\|new_amsterdam\\\\|New Amsterdam\" \"C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/google_fonts-6.3.3/\" 2>/dev/null | head -5)",
+      "Read(//c/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/google_fonts-6.3.3/**)",
+      "Read(//c/Users/user/Documents/**)",
+      "Bash(cp \"C:/Users/user/Documents/Home_nonselected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
+      "Bash(cp \"C:/Users/user/Documents/Home_selected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
+      "Bash(cp \"C:/Users/user/Documents/Profile_nonselected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
+      "Bash(cp \"C:/Users/user/Documents/Profile_selected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
+      "Bash(cp \"C:/Users/user/Documents/Rank_nonselected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
+      "Bash(dir \"c:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\assets\" /s /b)",
+      "Bash(dart run *)"
     ]
   }
 }

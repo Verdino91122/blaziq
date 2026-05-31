@@ -125,7 +125,11 @@ class _HeaderBar extends StatelessWidget {
               backgroundColor: AppTheme.cardSurface,
               backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
               child: photoUrl == null
-                  ? const Icon(Icons.person, color: AppTheme.mutedText, size: 20)
+                  ? const Icon(
+                      Icons.person,
+                      color: AppTheme.mutedText,
+                      size: 20,
+                    )
                   : null,
             ),
           ),
@@ -134,7 +138,11 @@ class _HeaderBar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.star_rounded, color: AppTheme.blazeGold, size: 16),
+              const Icon(
+                Icons.star_rounded,
+                color: AppTheme.blazeGold,
+                size: 16,
+              ),
               const SizedBox(width: 3),
               Text('$coins', style: AppTheme.statValue),
             ],
@@ -160,8 +168,9 @@ class _XpBar extends StatelessWidget {
     final nextThreshold = UserService.xpThreshold(level + 1);
     final rangeSize = nextThreshold - currThreshold;
     final xpInLevel = xp - currThreshold;
-    final progress =
-        rangeSize > 0 ? (xpInLevel / rangeSize).clamp(0.0, 1.0) : 1.0;
+    final progress = rangeSize > 0
+        ? (xpInLevel / rangeSize).clamp(0.0, 1.0)
+        : 1.0;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -228,19 +237,12 @@ class _BrainLogoSection extends StatelessWidget {
           children: [
             // Mirror spacer — matches (gap 8 + tap zone 80) so circle stays centered
             const SizedBox(width: 88),
-            // Brain logo circle
-            Container(
+            // App logo
+            Image.asset(
+              'assets/images/inapp_logo.png',
               width: 80,
               height: 80,
-              decoration: const BoxDecoration(
-                color: AppTheme.blazeGold,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.psychology_rounded,
-                color: AppTheme.voidBlack,
-                size: 48,
-              ),
+              fit: BoxFit.contain,
             ),
             // Gap
             const SizedBox(width: 8),
@@ -285,13 +287,13 @@ class _ModeCard extends StatelessWidget {
     _CardData(
       icon: Icons.person_rounded,
       title: 'SOLO',
-      description: 'Play alone vs the clock',
+      description: 'Play a solo game against the clock',
       gradientColors: [AppTheme.modeCardStart, AppTheme.modeCardEnd],
       accentColor: AppTheme.blazeGold,
     ),
     _CardData(
       icon: Icons.people_rounded,
-      title: 'WITH FRIEND',
+      title: 'WITH A FRIEND',
       description: 'Create or join a private room',
       gradientColors: [AppTheme.modeCardStart, AppTheme.modeCardEnd],
       accentColor: AppTheme.whiteText,

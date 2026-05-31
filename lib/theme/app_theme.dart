@@ -83,260 +83,260 @@ class AppTheme {
   // ── Text Styles ──────────────────────────────────────────────────────────
 
   /// Main screen titles — LEADERBOARD, SETTINGS
-  static TextStyle get screenTitle => GoogleFonts.rajdhani(
-        fontSize: 28,
-        fontWeight: FontWeight.w800,
-        color: whiteText,
-        letterSpacing: 4.0,
-      );
+  static TextStyle get screenTitle => GoogleFonts.newAmsterdam(
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
+    color: whiteText,
+    letterSpacing: 4.0,
+  );
 
   /// Store screen title — SHOP
-  static TextStyle get storeTitle => GoogleFonts.rajdhani(
-        fontSize: 30,
-        fontWeight: FontWeight.w800,
-        color: whiteText,
-        letterSpacing: 4.0,
-      );
+  static TextStyle get storeTitle => GoogleFonts.newAmsterdam(
+    fontSize: 30,
+    fontWeight: FontWeight.w800,
+    color: whiteText,
+    letterSpacing: 4.0,
+  );
 
   /// App bar title — e.g. SOLO MODE
-  static TextStyle get appBarTitle => GoogleFonts.rajdhani(
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        color: whiteText,
-        letterSpacing: 3.0,
-      );
+  static TextStyle get appBarTitle => GoogleFonts.newAmsterdam(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    color: whiteText,
+    letterSpacing: 3.0,
+  );
 
   /// Profile page heading — SAVE YOUR PROGRESS!
-  static TextStyle get subheading => GoogleFonts.rajdhani(
-        fontSize: 26,
-        fontWeight: FontWeight.w800,
-        color: whiteText,
-        letterSpacing: 2.0,
-      );
+  static TextStyle get subheading => GoogleFonts.newAmsterdam(
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    color: whiteText,
+    letterSpacing: 2.0,
+  );
 
   /// "SELECT A MODE" label above carousel
-  static TextStyle get selectModeLabel => GoogleFonts.rajdhani(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        color: whiteText,
-        letterSpacing: 3.0,
-      );
+  static TextStyle get selectModeLabel => GoogleFonts.newAmsterdam(
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: whiteText,
+    letterSpacing: 3.0,
+  );
 
-  /// Carousel mode card title — SOLO, WITH FRIEND, ONLINE
-  static TextStyle get modeTitle => GoogleFonts.rajdhani(
-        fontSize: 32,
-        fontWeight: FontWeight.w800,
-        color: whiteText,
-        letterSpacing: 4.0,
-      );
+  /// Carousel mode card title — SOLO, WITH A FRIEND, ONLINE
+  static TextStyle get modeTitle => GoogleFonts.newAmsterdam(
+    fontSize: 32,
+    fontWeight: FontWeight.w800,
+    color: whiteText,
+    letterSpacing: 4.0,
+  );
 
   /// CTA button labels on colored backgrounds (dark text)
-  static TextStyle get buttonLabel => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        color: voidBlack,
-        letterSpacing: 2.0,
-      );
+  static TextStyle get buttonLabel => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: voidBlack,
+    letterSpacing: 2.0,
+  );
 
   /// Settings section header — AUDIO & HAPTICS
-  static TextStyle get sectionHeader => GoogleFonts.rajdhani(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: mutedText,
-        letterSpacing: 1.5,
-      );
+  static TextStyle get sectionHeader => GoogleFonts.newAmsterdam(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: mutedText,
+    letterSpacing: 1.5,
+  );
 
   /// Settings row label text
-  static TextStyle get rowLabel => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: whiteText,
-      );
+  static TextStyle get rowLabel => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: whiteText,
+  );
 
   /// Body text, muted — descriptions, subtitles
-  static TextStyle get bodyMuted => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: mutedText,
-        height: 1.5,
-      );
+  static TextStyle get bodyMuted => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    color: mutedText,
+    height: 1.5,
+  );
 
   /// Header bar stat chip values — "67", "6"
-  static TextStyle get statValue => GoogleFonts.rajdhani(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        color: whiteText,
-      );
+  static TextStyle get statValue => GoogleFonts.newAmsterdam(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: whiteText,
+  );
 
   /// Small caption — XP counter, sub-labels
-  static TextStyle get caption => GoogleFonts.rajdhani(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: mutedText,
-      );
+  static TextStyle get caption => GoogleFonts.newAmsterdam(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: mutedText,
+  );
 
   /// Bottom nav labels — color resolved by caller with copyWith
-  static TextStyle get navLabel => GoogleFonts.rajdhani(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.3,
-      );
+  static TextStyle get navLabel => GoogleFonts.newAmsterdam(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.3,
+  );
 
   /// Leaderboard filter tab text — color resolved by caller with copyWith
-  static TextStyle get filterTab => GoogleFonts.rajdhani(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.5,
-      );
+  static TextStyle get filterTab => GoogleFonts.newAmsterdam(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.5,
+  );
 
   /// Rank badge inside podium cards — 1st, 2nd, 3rd
-  static TextStyle get rankBadge => GoogleFonts.rajdhani(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: Colors.white,
-        letterSpacing: 0.5,
-      );
+  static TextStyle get rankBadge => GoogleFonts.newAmsterdam(
+    fontSize: 11,
+    fontWeight: FontWeight.w800,
+    color: Colors.white,
+    letterSpacing: 0.5,
+  );
 
   /// Podium player first name
-  static TextStyle get podiumName => GoogleFonts.rajdhani(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        color: whiteText,
-      );
+  static TextStyle get podiumName => GoogleFonts.newAmsterdam(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: whiteText,
+  );
 
   /// Podium score value (gold)
-  static TextStyle get podiumScore => GoogleFonts.rajdhani(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: blazeGold,
-      );
+  static TextStyle get podiumScore => GoogleFonts.newAmsterdam(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: blazeGold,
+  );
 
   /// Player rank number in list rows (muted)
-  static TextStyle get rankNumber => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        color: mutedText,
-      );
+  static TextStyle get rankNumber => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: mutedText,
+  );
 
   /// Player name in list rows
-  static TextStyle get playerName => GoogleFonts.rajdhani(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: whiteText,
-      );
+  static TextStyle get playerName => GoogleFonts.newAmsterdam(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    color: whiteText,
+  );
 
   /// Score value in list rows (gold)
-  static TextStyle get score => GoogleFonts.rajdhani(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        color: blazeGold,
-      );
+  static TextStyle get score => GoogleFonts.newAmsterdam(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: blazeGold,
+  );
 
   /// Store bundle name strip text
-  static TextStyle get bundleName => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        color: Colors.white,
-        letterSpacing: 2.5,
-      );
+  static TextStyle get bundleName => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: Colors.white,
+    letterSpacing: 2.5,
+  );
 
   /// Store price button text — dark text on gold button
-  static TextStyle get priceText => GoogleFonts.rajdhani(
-        fontSize: 18,
-        fontWeight: FontWeight.w800,
-        color: voidBlack,
-      );
+  static TextStyle get priceText => GoogleFonts.newAmsterdam(
+    fontSize: 18,
+    fontWeight: FontWeight.w800,
+    color: voidBlack,
+  );
 
   /// Store item quantity label
-  static TextStyle get itemLabel => GoogleFonts.rajdhani(
-        fontSize: 13,
-        fontWeight: FontWeight.w800,
-        color: whiteText,
-      );
+  static TextStyle get itemLabel => GoogleFonts.newAmsterdam(
+    fontSize: 13,
+    fontWeight: FontWeight.w800,
+    color: whiteText,
+  );
 
   /// Store coin balance in header chip
-  static TextStyle get coinBalance => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        color: Colors.white,
-      );
+  static TextStyle get coinBalance => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: Colors.white,
+  );
 
   /// Best-offer ribbon label
-  static TextStyle get ribbonLabel => GoogleFonts.rajdhani(
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        color: Colors.white,
-        letterSpacing: 1.0,
-      );
+  static TextStyle get ribbonLabel => GoogleFonts.newAmsterdam(
+    fontSize: 10,
+    fontWeight: FontWeight.w800,
+    color: Colors.white,
+    letterSpacing: 1.0,
+  );
 
   /// Reward / highlight note (gold)
-  static TextStyle get rewardText => GoogleFonts.rajdhani(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        color: blazeGold,
-        letterSpacing: 0.5,
-      );
+  static TextStyle get rewardText => GoogleFonts.newAmsterdam(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: blazeGold,
+    letterSpacing: 0.5,
+  );
 
   /// Footer link text (muted, underlined)
-  static TextStyle get footerLink => GoogleFonts.rajdhani(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: mutedText,
-        decoration: TextDecoration.underline,
-        decorationColor: mutedText,
-      );
+  static TextStyle get footerLink => GoogleFonts.newAmsterdam(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: mutedText,
+    decoration: TextDecoration.underline,
+    decorationColor: mutedText,
+  );
 
   /// SnackBar message — must include explicit white color
-  static TextStyle get snackText => GoogleFonts.rajdhani(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: whiteText,
-      );
+  static TextStyle get snackText => GoogleFonts.newAmsterdam(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    color: whiteText,
+  );
 
   /// Solo game — current streak counter
-  static TextStyle get streakText => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        color: blazeGold,
-      );
+  static TextStyle get streakText => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: blazeGold,
+  );
 
   /// Solo game — difficulty badge label (color applied via copyWith at call site)
-  static TextStyle get difficultyBadge => GoogleFonts.rajdhani(
-        fontSize: 13,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.5,
-        color: whiteText,
-      );
+  static TextStyle get difficultyBadge => GoogleFonts.newAmsterdam(
+    fontSize: 13,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 1.5,
+    color: whiteText,
+  );
 
   /// Solo game screen — question card text
-  static TextStyle get questionText => GoogleFonts.rajdhani(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: whiteText,
-        height: 1.4,
-      );
+  static TextStyle get questionText => GoogleFonts.newAmsterdam(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: whiteText,
+    height: 1.4,
+  );
 
   /// Solo game screen — circular countdown timer number
-  static TextStyle get timerText => GoogleFonts.rajdhani(
-        fontSize: 22,
-        fontWeight: FontWeight.w800,
-        color: whiteText,
-      );
+  static TextStyle get timerText => GoogleFonts.newAmsterdam(
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    color: whiteText,
+  );
 
   /// Solo game screen — answer button label
-  static TextStyle get answerText => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: whiteText,
-      );
+  static TextStyle get answerText => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: whiteText,
+  );
 
   /// Sign-in button label — color varies per provider
-  static TextStyle signInLabel(Color color) => GoogleFonts.rajdhani(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: color,
-        letterSpacing: 0.3,
-      );
+  static TextStyle signInLabel(Color color) => GoogleFonts.newAmsterdam(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: color,
+    letterSpacing: 0.3,
+  );
 
   // ── ThemeData ────────────────────────────────────────────────────────────
 
@@ -349,16 +349,19 @@ class AppTheme {
         secondary: sparkPink,
         surface: cardSurface,
       ),
-      textTheme: GoogleFonts.rajdhaniTextTheme(base.textTheme).apply(
-        bodyColor: whiteText,
-        displayColor: whiteText,
-      ),
+      textTheme: GoogleFonts.newAmsterdamTextTheme(
+        base.textTheme,
+      ).apply(bodyColor: whiteText, displayColor: whiteText),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? Colors.white : Colors.grey.shade400,
+          (s) => s.contains(WidgetState.selected)
+              ? Colors.white
+              : Colors.grey.shade400,
         ),
         trackColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? blazeGold : Colors.grey.shade700,
+          (s) => s.contains(WidgetState.selected)
+              ? blazeGold
+              : Colors.grey.shade700,
         ),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),

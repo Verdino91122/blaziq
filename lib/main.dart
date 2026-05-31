@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
@@ -11,10 +12,14 @@ import 'screens/store_screen.dart';
 import 'screens/menu_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  // Keep the native splash visible until Firebase + auth are ready.
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final authError = await AuthService.ensureAnonymousSignIn();
   if (authError != null) debugPrint('[Blaziq] Anonymous auth failed: $authError');
+
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -24,6 +29,8 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.light,
     systemNavigationBarContrastEnforced: false,
   ));
+
+  FlutterNativeSplash.remove();
   runApp(const BlaziQApp());
 }
 
@@ -63,8 +70,8 @@ class _MainShellState extends State<MainShell> {
     _NavItem(Icons.person_outline, Icons.person, 'Profile'),
     _NavItem(Icons.emoji_events_outlined, Icons.emoji_events, 'Rank'),
     _NavItem(Icons.home_outlined, Icons.home, 'Home'),
-    _NavItem(Icons.storefront_outlined, Icons.storefront, 'Store'),
-    _NavItem(Icons.menu, Icons.menu, 'Menu'),
+    _NavItem(Icons.storefront_outlined, Icons.storefront, 'Shop'),
+    _NavItem(Icons.menu, Icons.menu, 'Settings'),
   ];
 
   @override

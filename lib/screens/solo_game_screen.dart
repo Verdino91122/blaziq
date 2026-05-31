@@ -165,9 +165,17 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   Future<List<_Question>> _fetchBatch(_Difficulty difficulty) async {
     final baseUrl = '$_apiBase&difficulty=${difficulty.name}';
     final url = kIsWeb ? 'https://corsproxy.io/?$baseUrl' : baseUrl;
-    final response = await http
+    var response = await http
         .get(Uri.parse(url))
         .timeout(const Duration(seconds: 10));
+    // OpenTDB rate-limits to ~1 req/5s; retry once automatically instead of
+    // surfacing an error to the user (common when restarting a game quickly).
+    if (response.statusCode == 429) {
+      await Future.delayed(const Duration(seconds: 5));
+      response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
+    }
     if (response.statusCode != 200) {
       throw Exception('Server error (${response.statusCode})');
     }
@@ -316,6 +324,8 @@ class _SoloGameScreenState extends State<SoloGameScreen>
         score: score,
         xpEarned: xp,
         coinsEarned: coins,
+        isAnonymous: user.isAnonymous,
+        avatarUrl: user.photoURL ?? '',
       ).catchError((_) {});
     }
 
@@ -339,9 +349,16 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       _correctCount++;
       _currentStreak++;
       if (_currentStreak > _highestStreak) { _highestStreak = _currentStreak; }
-      int bonus = 4;
-      if (_currentStreak >= 5) { bonus += 4; }
-      else if (_currentStreak >= 3) { bonus += 2; }
+      final int bonus;
+      if (_currentStreak >= 5) {
+        bonus = 10;
+      } else if (_currentStreak == 4) {
+        bonus = 8;
+      } else if (_currentStreak == 3) {
+        bonus = 6;
+      } else {
+        bonus = 4;
+      }
       newTime += bonus;
       final streakLabel = _currentStreak >= 3 ? '🔥 x$_currentStreak STREAK!' : null;
       _showFeedback('+${bonus}s', AppTheme.blazeGold, streakLabel: streakLabel);
@@ -492,6 +509,75 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     });
   }
 
+  // ── Navigation helpers ────────────────────────────────────────────────────
+
+  void _cancelCountdown() {
+    _countdownGeneration++;
+    _countdownTimer?.cancel();
+    if (mounted) Navigator.pop(context);
+  }
+
+  void _showQuitDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.cardSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Quit Game?',
+            style: AppTheme.subheading.copyWith(fontSize: 22),
+            textAlign: TextAlign.center),
+        content: Text(
+          'Your progress will be lost.',
+          style: AppTheme.bodyMuted,
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(dialogContext),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    color: AppTheme.blazeGold,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text('Keep Playing',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.buttonLabel),
+                ),
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardSurface,
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: AppTheme.mutedText.withAlpha(80)),
+                  ),
+                  child: Text('Quit',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.buttonLabel
+                          .copyWith(color: AppTheme.mutedText)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Computed ──────────────────────────────────────────────────────────────
 
   int get _liveScore => _correctCount * 100;
@@ -505,62 +591,72 @@ class _SoloGameScreenState extends State<SoloGameScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.arenaBlack,
-      body: switch (_phase) {
-        _GamePhase.loading => const _LoadingView(),
-        _GamePhase.error => _ErrorView(
-            message: _errorMessage,
-            onRetry: _startGame,
-          ),
-        _GamePhase.result => _ResultsView(
-            score: _finalScore,
-            correctCount: _correctCount,
-            highestStreak: _highestStreak,
-            accuracy: _accuracy,
-            xpEarned: _xpEarned,
-            coinsEarned: _coinsEarned,
-            xpBefore: _xpBefore,
-            isSignedIn: AuthService.currentUser != null,
-            onPlayAgain: _startGame,
-            onHome: () => Navigator.pop(context),
-          ),
-        _GamePhase.playing => Stack(
-            children: [
-              _GameView(
-                question: _questions[_qIndex],
-                difficulty: _difficulty,
-                liveScore: _liveScore,
-                timeRemaining: _timeRemaining,
-                currentStreak: _currentStreak,
-                selectedAnswer: _selectedAnswer,
-                answered: _answered,
-                loadingNextBatch: _loadingNextBatch,
-                onAnswer: _onAnswer,
-                onBack: () => Navigator.pop(context),
-                timerBumpCtrl: _timerBumpCtrl,
-                timerBumpColor: _timerBumpColor,
-                cheats: widget.cheatMode
-                    ? _CheatCallbacks(
-                        addTime: _cheatAddTime,
-                        forceCorrect: _cheatForceCorrect,
-                        forceWrong: _cheatForceWrong,
-                        setHard: _cheatSetHard,
-                        setEasy: _cheatSetEasy,
-                      )
-                    : null,
-              ),
-              if (_countingDown)
-                AbsorbPointer(
-                  child: AnimatedOpacity(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        // During countdown: cancel button handles navigation; back button blocked
+        if (_countingDown) return;
+        if (_phase == _GamePhase.playing) _showQuitDialog();
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.arenaBlack,
+        body: switch (_phase) {
+          _GamePhase.loading => const _LoadingView(),
+          _GamePhase.error => _ErrorView(
+              message: _errorMessage,
+              onRetry: _startGame,
+            ),
+          _GamePhase.result => _ResultsView(
+              score: _finalScore,
+              correctCount: _correctCount,
+              highestStreak: _highestStreak,
+              accuracy: _accuracy,
+              xpEarned: _xpEarned,
+              coinsEarned: _coinsEarned,
+              xpBefore: _xpBefore,
+              isSignedIn: AuthService.currentUser != null,
+              onPlayAgain: _startGame,
+              onHome: () => Navigator.pop(context),
+            ),
+          _GamePhase.playing => Stack(
+              children: [
+                _GameView(
+                  question: _questions[_qIndex],
+                  difficulty: _difficulty,
+                  liveScore: _liveScore,
+                  timeRemaining: _timeRemaining,
+                  currentStreak: _currentStreak,
+                  selectedAnswer: _selectedAnswer,
+                  answered: _answered,
+                  loadingNextBatch: _loadingNextBatch,
+                  onAnswer: _onAnswer,
+                  onQuit: _showQuitDialog,
+                  timerBumpCtrl: _timerBumpCtrl,
+                  timerBumpColor: _timerBumpColor,
+                  cheats: widget.cheatMode
+                      ? _CheatCallbacks(
+                          addTime: _cheatAddTime,
+                          forceCorrect: _cheatForceCorrect,
+                          forceWrong: _cheatForceWrong,
+                          setHard: _cheatSetHard,
+                          setEasy: _cheatSetEasy,
+                        )
+                      : null,
+                ),
+                if (_countingDown)
+                  AnimatedOpacity(
                     opacity: _countdownOverlayVisible ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 400),
-                    child: _CountdownOverlay(value: _countdownValue),
+                    child: _CountdownOverlay(
+                      value: _countdownValue,
+                      onCancel: _cancelCountdown,
+                    ),
                   ),
-                ),
-            ],
-          ),
-      },
+              ],
+            ),
+        },
+      ),
     );
   }
 }
@@ -649,7 +745,7 @@ class _GameView extends StatelessWidget {
   final bool answered;
   final bool loadingNextBatch;
   final ValueChanged<String> onAnswer;
-  final VoidCallback onBack;
+  final VoidCallback onQuit;
   final _CheatCallbacks? cheats;
   final AnimationController? timerBumpCtrl;
   final Color? timerBumpColor;
@@ -664,7 +760,7 @@ class _GameView extends StatelessWidget {
     required this.answered,
     required this.loadingNextBatch,
     required this.onAnswer,
-    required this.onBack,
+    required this.onQuit,
     this.cheats,
     this.timerBumpCtrl,
     this.timerBumpColor,
@@ -701,9 +797,9 @@ class _GameView extends StatelessWidget {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: onBack,
-                  child: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: AppTheme.whiteText, size: 20),
+                  onTap: onQuit,
+                  child: const Icon(Icons.close_rounded,
+                      color: AppTheme.whiteText, size: 22),
                 ),
                 const Spacer(),
                 // Difficulty badge
@@ -855,35 +951,53 @@ class _GameView extends StatelessWidget {
 
 class _CountdownOverlay extends StatelessWidget {
   final int value; // 3, 2, 1 = number; 0 = GO!
+  final VoidCallback onCancel;
 
-  const _CountdownOverlay({required this.value});
+  const _CountdownOverlay({required this.value, required this.onCancel});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: AppTheme.arenaBlack,
       child: Center(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 1.35, end: 1.0).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 1.35, end: 1.0).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+                  child: child,
+                ),
               ),
-              child: child,
+              child: Text(
+                key: ValueKey(value),
+                value > 0 ? '$value' : 'GO!',
+                style: AppTheme.storeTitle.copyWith(
+                  fontSize: value > 0 ? 96 : 80,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.blazeGold,
+                  letterSpacing: value > 0 ? 2.0 : 8.0,
+                ),
+              ),
             ),
-          ),
-          child: Text(
-            key: ValueKey(value),
-            value > 0 ? '$value' : 'GO!',
-            style: AppTheme.storeTitle.copyWith(
-              fontSize: value > 0 ? 96 : 80,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.blazeGold,
-              letterSpacing: value > 0 ? 2.0 : 8.0,
-            ),
-          ),
+            const SizedBox(height: 48),
+            if (value > 0)
+              GestureDetector(
+                onTap: onCancel,
+                child: Text(
+                  'CANCEL',
+                  style: AppTheme.sectionHeader.copyWith(
+                    color: AppTheme.mutedText,
+                    letterSpacing: 3,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

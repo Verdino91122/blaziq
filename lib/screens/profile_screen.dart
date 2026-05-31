@@ -149,7 +149,10 @@ class _AnonView extends StatelessWidget {
               stream: UserService.userStream(user!.uid),
               builder: (context, snap) {
                 final data = snap.data?.data();
-                final username = (data?['username'] as String?) ?? 'Guest';
+                // Fall back to UID-derived name when doc doesn't exist yet
+                // (new anonymous user who hasn't completed a game).
+                final username = (data?['username'] as String?)
+                    ?? 'Guest_${user!.uid.substring(0, 6)}';
                 return Column(
                   children: [
                     Text(username,
@@ -238,6 +241,68 @@ class _SignedInView extends StatelessWidget {
 
   const _SignedInView({required this.user, required this.onSignOut});
 
+  void _confirmSignOut(BuildContext context, VoidCallback onConfirm) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.cardSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Sign Out?',
+            style: AppTheme.subheading.copyWith(fontSize: 22),
+            textAlign: TextAlign.center),
+        content: Text(
+          'Progress earned while signed out won\'t be saved to your account.',
+          style: AppTheme.bodyMuted,
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardSurface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.mutedText.withAlpha(80)),
+                  ),
+                  child: Text('Cancel',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.buttonLabel.copyWith(
+                          color: AppTheme.mutedText)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  onConfirm();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    color: AppTheme.sparkPink.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: AppTheme.sparkPink.withAlpha(80)),
+                  ),
+                  child: Text('Sign Out',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.buttonLabel.copyWith(
+                          color: AppTheme.sparkPink)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -262,7 +327,7 @@ class _SignedInView extends StatelessWidget {
               _StatsGrid(data: data),
               const SizedBox(height: 32),
               GestureDetector(
-                onTap: onSignOut,
+                onTap: () => _confirmSignOut(context, onSignOut),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
