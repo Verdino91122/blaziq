@@ -19,6 +19,8 @@ dependencies:
   cloud_firestore: ^5.0.0
   google_sign_in: ^6.2.0
   flutter_native_splash: ^2.4.1
+  audioplayers: ^6.0.0
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -42,9 +44,7 @@ flutter_native_splash:
   color_dark: "#1A1A2E"
   image_dark: assets/images/splash_logo.png
   android_12:
-    image: assets/images/splash_logo.png
     color: "#1A1A2E"
-    image_dark: assets/images/splash_logo.png
     color_dark: "#1A1A2E"
   fullscreen: true
 
@@ -54,3 +54,4 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+    - assets/sounds/

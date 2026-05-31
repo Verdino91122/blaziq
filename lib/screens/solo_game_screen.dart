@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
+import '../services/sound_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 
@@ -66,7 +69,9 @@ class _Question {
     final correct = _decodeHtml(json['correct_answer'] as String);
     final answers = [
       correct,
-      ...(json['incorrect_answers'] as List).map((a) => _decodeHtml(a as String)),
+      ...(json['incorrect_answers'] as List).map(
+        (a) => _decodeHtml(a as String),
+      ),
     ]..shuffle(Random());
     return _Question(
       text: _decodeHtml(json['question'] as String),
@@ -142,6 +147,10 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   int _xpBefore = 0;
   Map<String, dynamic>? _userDataSnapshot;
 
+  // ── Audio / haptic state ──────────────────────────────────────────────────
+  bool _urgentSoundActive = false;
+  bool _hapticsEnabled = true;
+
   // ── Pre-game countdown ────────────────────────────────────────────────────
   bool _countingDown = false;
   int _countdownValue = 3;
@@ -159,8 +168,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
 
   // ── API ───────────────────────────────────────────────────────────────────
 
-  static const _apiBase =
-      'https://opentdb.com/api.php?amount=10&type=multiple';
+  static const _apiBase = 'https://opentdb.com/api.php?amount=50&type=multiple';
 
   Future<List<_Question>> _fetchBatch(_Difficulty difficulty) async {
     final baseUrl = '$_apiBase&difficulty=${difficulty.name}';
@@ -198,6 +206,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       duration: const Duration(milliseconds: 300),
       value: 1.0, // start settled — no bump on init
     );
+    PreferencesService.getHapticsEnabled().then((v) => _hapticsEnabled = v);
     _startGame();
   }
 
@@ -206,6 +215,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     _countdownTimer?.cancel();
     _feedbackTimer?.cancel();
     _timerBumpCtrl.dispose();
+    SoundService.dispose();
     super.dispose();
   }
 
@@ -234,17 +244,24 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       _selectedAnswer = null;
       _answered = false;
       _loadingNextBatch = false;
+      _urgentSoundActive = false;
       _countingDown = false;
+
       _countdownValue = 3;
       _countdownOverlayVisible = false;
     });
 
+    // Reload haptics preference in case user changed it between games.
+    PreferencesService.getHapticsEnabled().then((v) => _hapticsEnabled = v);
+
     // Pre-fetch user data so _endGame() can check firstGameToday without delay.
     final user = AuthService.currentUser;
     if (user != null) {
-      UserService.getUserData(user.uid).then((data) {
-        _userDataSnapshot = data;
-      }).catchError((_) {});
+      UserService.getUserData(user.uid)
+          .then((data) {
+            _userDataSnapshot = data;
+          })
+          .catchError((_) {});
     }
 
     try {
@@ -276,6 +293,17 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       if (_timeRemaining <= 0) {
         _countdownTimer?.cancel();
         _endGame();
+        return;
+      }
+      // Transition to tic-toc when timer first drops to 8
+      if (_timeRemaining == 8 && !_urgentSoundActive) {
+        _urgentSoundActive = true;
+        SoundService.stopBackgroundMusic();
+        SoundService.startTicToc();
+      }
+      // Haptic click on every tick during urgent phase
+      if (_timeRemaining <= 8 && _hapticsEnabled) {
+        HapticFeedback.selectionClick();
       }
     });
   }
@@ -294,12 +322,16 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted || _countdownGeneration != generation) return;
     setState(() => _countingDown = false);
+    SoundService.startBackgroundMusic();
     _startCountdown();
   }
 
   void _endGame() {
     _countdownTimer?.cancel();
     _feedbackTimer?.cancel();
+    SoundService.stopTicToc();
+    SoundService.stopBackgroundMusic();
+    SoundService.playGameOver();
 
     final base = _correctCount * 100;
     final streakBonus = _highestStreak * 50;
@@ -309,7 +341,8 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     final xp = (_correctCount * 10) + 5 + (_highestStreak * 3);
 
     final firstGameToday = UserService.isFirstGameToday(_userDataSnapshot);
-    final coins = 10 +
+    final coins =
+        10 +
         (_correctCount * 2) +
         (_highestStreak >= 5 ? 15 : 0) +
         (firstGameToday ? 20 : 0);
@@ -348,7 +381,9 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     if (isCorrect) {
       _correctCount++;
       _currentStreak++;
-      if (_currentStreak > _highestStreak) { _highestStreak = _currentStreak; }
+      if (_currentStreak > _highestStreak) {
+        _highestStreak = _currentStreak;
+      }
       final int bonus;
       if (_currentStreak >= 5) {
         bonus = 10;
@@ -360,13 +395,35 @@ class _SoloGameScreenState extends State<SoloGameScreen>
         bonus = 4;
       }
       newTime += bonus;
-      final streakLabel = _currentStreak >= 3 ? '🔥 x$_currentStreak STREAK!' : null;
+      final streakLabel = _currentStreak >= 3
+          ? '🔥 x$_currentStreak STREAK!'
+          : null;
       _showFeedback('+${bonus}s', AppTheme.blazeGold, streakLabel: streakLabel);
+
+      // Sounds & haptics for correct answer
+      SoundService.playCorrect();
+      if (_hapticsEnabled) {
+        if (_currentStreak == 3 || _currentStreak == 5) {
+          HapticFeedback.mediumImpact();
+        } else {
+          HapticFeedback.lightImpact();
+        }
+      }
+
+      // Streak bonus pushed time back above 8 — switch back to bg music
+      if (_urgentSoundActive && newTime > 8) {
+        _urgentSoundActive = false;
+        SoundService.stopTicToc();
+        SoundService.startBackgroundMusic();
+      }
     } else {
       _wrongCount++;
       _currentStreak = 0;
       newTime -= 3;
       _showFeedback('-3s', AppTheme.sparkPink);
+
+      SoundService.playWrong();
+      if (_hapticsEnabled) HapticFeedback.heavyImpact();
     }
 
     setState(() {
@@ -390,8 +447,11 @@ class _SoloGameScreenState extends State<SoloGameScreen>
 
     // Difficulty escalation
     _Difficulty newDiff = _difficulty;
-    if (_correctCount >= 10) { newDiff = _Difficulty.hard; }
-    else if (_correctCount >= 5) { newDiff = _Difficulty.medium; }
+    if (_correctCount >= 10) {
+      newDiff = _Difficulty.hard;
+    } else if (_correctCount >= 5) {
+      newDiff = _Difficulty.medium;
+    }
 
     if (newDiff != _difficulty) {
       _difficulty = newDiff;
@@ -485,8 +545,9 @@ class _SoloGameScreenState extends State<SoloGameScreen>
 
   void _cheatForceWrong() {
     if (_answered || _phase != _GamePhase.playing) return;
-    final wrong = _questions[_qIndex].answers
-        .firstWhere((a) => a != _questions[_qIndex].correct);
+    final wrong = _questions[_qIndex].answers.firstWhere(
+      (a) => a != _questions[_qIndex].correct,
+    );
     _onAnswer(wrong);
   }
 
@@ -498,15 +559,17 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     if (_prefetching || _nextBatch.isNotEmpty) return;
     if (_questions.length - _qIndex > 3) return;
     _prefetching = true;
-    _fetchBatch(_difficulty).then((batch) {
-      if (!mounted) return;
-      setState(() {
-        _nextBatch = batch;
-        _prefetching = false;
-      });
-    }).catchError((_) {
-      _prefetching = false;
-    });
+    _fetchBatch(_difficulty)
+        .then((batch) {
+          if (!mounted) return;
+          setState(() {
+            _nextBatch = batch;
+            _prefetching = false;
+          });
+        })
+        .catchError((_) {
+          _prefetching = false;
+        });
   }
 
   // ── Navigation helpers ────────────────────────────────────────────────────
@@ -524,9 +587,11 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppTheme.cardSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Quit Game?',
-            style: AppTheme.subheading.copyWith(fontSize: 22),
-            textAlign: TextAlign.center),
+        title: Text(
+          'Quit Game?',
+          style: AppTheme.subheading.copyWith(fontSize: 22),
+          textAlign: TextAlign.center,
+        ),
         content: Text(
           'Your progress will be lost.',
           style: AppTheme.bodyMuted,
@@ -546,9 +611,11 @@ class _SoloGameScreenState extends State<SoloGameScreen>
                     color: AppTheme.blazeGold,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text('Keep Playing',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.buttonLabel),
+                  child: Text(
+                    'Keep Playing',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.buttonLabel,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -562,13 +629,15 @@ class _SoloGameScreenState extends State<SoloGameScreen>
                   decoration: BoxDecoration(
                     color: AppTheme.cardSurface,
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: AppTheme.mutedText.withAlpha(80)),
+                    border: Border.all(color: AppTheme.mutedText.withAlpha(80)),
                   ),
-                  child: Text('Quit',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.buttonLabel
-                          .copyWith(color: AppTheme.mutedText)),
+                  child: Text(
+                    'Quit',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.buttonLabel.copyWith(
+                      color: AppTheme.mutedText,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -604,57 +673,57 @@ class _SoloGameScreenState extends State<SoloGameScreen>
         body: switch (_phase) {
           _GamePhase.loading => const _LoadingView(),
           _GamePhase.error => _ErrorView(
-              message: _errorMessage,
-              onRetry: _startGame,
-            ),
+            message: _errorMessage,
+            onRetry: _startGame,
+          ),
           _GamePhase.result => _ResultsView(
-              score: _finalScore,
-              correctCount: _correctCount,
-              highestStreak: _highestStreak,
-              accuracy: _accuracy,
-              xpEarned: _xpEarned,
-              coinsEarned: _coinsEarned,
-              xpBefore: _xpBefore,
-              isSignedIn: AuthService.currentUser != null,
-              onPlayAgain: _startGame,
-              onHome: () => Navigator.pop(context),
-            ),
+            score: _finalScore,
+            correctCount: _correctCount,
+            highestStreak: _highestStreak,
+            accuracy: _accuracy,
+            xpEarned: _xpEarned,
+            coinsEarned: _coinsEarned,
+            xpBefore: _xpBefore,
+            isSignedIn: AuthService.currentUser != null,
+            onPlayAgain: _startGame,
+            onHome: () => Navigator.pop(context),
+          ),
           _GamePhase.playing => Stack(
-              children: [
-                _GameView(
-                  question: _questions[_qIndex],
-                  difficulty: _difficulty,
-                  liveScore: _liveScore,
-                  timeRemaining: _timeRemaining,
-                  currentStreak: _currentStreak,
-                  selectedAnswer: _selectedAnswer,
-                  answered: _answered,
-                  loadingNextBatch: _loadingNextBatch,
-                  onAnswer: _onAnswer,
-                  onQuit: _showQuitDialog,
-                  timerBumpCtrl: _timerBumpCtrl,
-                  timerBumpColor: _timerBumpColor,
-                  cheats: widget.cheatMode
-                      ? _CheatCallbacks(
-                          addTime: _cheatAddTime,
-                          forceCorrect: _cheatForceCorrect,
-                          forceWrong: _cheatForceWrong,
-                          setHard: _cheatSetHard,
-                          setEasy: _cheatSetEasy,
-                        )
-                      : null,
-                ),
-                if (_countingDown)
-                  AnimatedOpacity(
-                    opacity: _countdownOverlayVisible ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 400),
-                    child: _CountdownOverlay(
-                      value: _countdownValue,
-                      onCancel: _cancelCountdown,
-                    ),
+            children: [
+              _GameView(
+                question: _questions[_qIndex],
+                difficulty: _difficulty,
+                liveScore: _liveScore,
+                timeRemaining: _timeRemaining,
+                currentStreak: _currentStreak,
+                selectedAnswer: _selectedAnswer,
+                answered: _answered,
+                loadingNextBatch: _loadingNextBatch,
+                onAnswer: _onAnswer,
+                onQuit: _showQuitDialog,
+                timerBumpCtrl: _timerBumpCtrl,
+                timerBumpColor: _timerBumpColor,
+                cheats: widget.cheatMode
+                    ? _CheatCallbacks(
+                        addTime: _cheatAddTime,
+                        forceCorrect: _cheatForceCorrect,
+                        forceWrong: _cheatForceWrong,
+                        setHard: _cheatSetHard,
+                        setEasy: _cheatSetEasy,
+                      )
+                    : null,
+              ),
+              if (_countingDown)
+                AnimatedOpacity(
+                  opacity: _countdownOverlayVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 400),
+                  child: _CountdownOverlay(
+                    value: _countdownValue,
+                    onCancel: _cancelCountdown,
                   ),
-              ],
-            ),
+                ),
+            ],
+          ),
         },
       ),
     );
@@ -701,8 +770,11 @@ class _ErrorView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_rounded,
-                  color: AppTheme.mutedText, size: 56),
+              const Icon(
+                Icons.wifi_off_rounded,
+                color: AppTheme.mutedText,
+                size: 56,
+              ),
               const SizedBox(height: 20),
               Text(
                 'Could Not Load Questions',
@@ -710,14 +782,19 @@ class _ErrorView extends StatelessWidget {
                 style: AppTheme.subheading.copyWith(fontSize: 20),
               ),
               const SizedBox(height: 10),
-              Text(message,
-                  textAlign: TextAlign.center, style: AppTheme.bodyMuted),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: AppTheme.bodyMuted,
+              ),
               const SizedBox(height: 32),
               GestureDetector(
                 onTap: onRetry,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 36, vertical: 14),
+                    horizontal: 36,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.blazeGold,
                     borderRadius: BorderRadius.circular(12),
@@ -767,10 +844,10 @@ class _GameView extends StatelessWidget {
   });
 
   Color get _difficultyColor => switch (difficulty) {
-        _Difficulty.easy => AppTheme.difficultyEasy,
-        _Difficulty.medium => AppTheme.difficultyMedium,
-        _Difficulty.hard => AppTheme.difficultyHard,
-      };
+    _Difficulty.easy => AppTheme.difficultyEasy,
+    _Difficulty.medium => AppTheme.difficultyMedium,
+    _Difficulty.hard => AppTheme.difficultyHard,
+  };
 
   _AnswerState _stateFor(String answer) {
     if (!answered) return _AnswerState.idle;
@@ -790,160 +867,184 @@ class _GameView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-          // ── Top bar ──────────────────────────────────────────────────────
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: onQuit,
-                  child: const Icon(Icons.close_rounded,
-                      color: AppTheme.whiteText, size: 22),
-                ),
-                const Spacer(),
-                // Difficulty badge
-                Container(
+                // ── Top bar ──────────────────────────────────────────────────────
+                Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _difficultyColor.withAlpha(40),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: _difficultyColor.withAlpha(120), width: 1),
+                    horizontal: 20,
+                    vertical: 14,
                   ),
-                  child: Text(
-                    difficulty.name.toUpperCase(),
-                    style: AppTheme.difficultyBadge
-                        .copyWith(color: _difficultyColor),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: onQuit,
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: AppTheme.whiteText,
+                          size: 22,
+                        ),
+                      ),
+                      const Spacer(),
+                      // Difficulty badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _difficultyColor.withAlpha(40),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _difficultyColor.withAlpha(120),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          difficulty.name.toUpperCase(),
+                          style: AppTheme.difficultyBadge.copyWith(
+                            color: _difficultyColor,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      // Score
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            color: AppTheme.blazeGold,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '$liveScore',
+                            style: AppTheme.statValue.copyWith(
+                              fontSize: 16,
+                              color: AppTheme.blazeGold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                // Score
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.star_rounded,
-                        color: AppTheme.blazeGold, size: 18),
-                    const SizedBox(width: 5),
-                    Text(
-                      '$liveScore',
-                      style: AppTheme.statValue
-                          .copyWith(fontSize: 16, color: AppTheme.blazeGold),
+
+                // ── Circular timer ────────────────────────────────────────────────
+                Center(
+                  child: _CircularTimer(
+                    timeRemaining: timeRemaining,
+                    bumpCtrl: timerBumpCtrl,
+                    bumpColor: timerBumpColor,
+                  ),
+                ),
+
+                // ── Cheat bar (dev mode only) ─────────────────────────────────────
+                if (cheats != null) _CheatBar(cheats: cheats!),
+
+                const SizedBox(height: 40),
+
+                // ── Question card ─────────────────────────────────────────────────
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: loadingNextBatch
+                        ? Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppTheme.divider,
+                                width: 1,
+                              ),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const CircularProgressIndicator(
+                                    color: AppTheme.blazeGold,
+                                    strokeWidth: 3,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    'Loading next questions…',
+                                    style: AppTheme.bodyMuted,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppTheme.divider,
+                                width: 1,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                question.text,
+                                textAlign: TextAlign.center,
+                                style: AppTheme.questionText,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // ── Answer buttons ────────────────────────────────────────────────
+                if (!loadingNextBatch)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < question.answers.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 8),
+                          _AnswerButton(
+                            letter: letters[i],
+                            text: question.answers[i],
+                            state: _stateFor(question.answers[i]),
+                            onTap: answered
+                                ? null
+                                : () => onAnswer(question.answers[i]),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+
+                if (loadingNextBatch) const SizedBox(height: 20),
               ],
             ),
           ),
-
-          // ── Circular timer ────────────────────────────────────────────────
-          Center(
-            child: _CircularTimer(
-              timeRemaining: timeRemaining,
-              bumpCtrl: timerBumpCtrl,
-              bumpColor: timerBumpColor,
-            ),
-          ),
-
-          // ── Cheat bar (dev mode only) ─────────────────────────────────────
-          if (cheats != null) _CheatBar(cheats: cheats!),
-
-          const SizedBox(height: 16),
-
-          // ── Question card ─────────────────────────────────────────────────
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: loadingNextBatch
-                  ? Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(16),
-                        border:
-                            Border.all(color: AppTheme.divider, width: 1),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const CircularProgressIndicator(
-                              color: AppTheme.blazeGold,
-                              strokeWidth: 3,
-                            ),
-                            const SizedBox(height: 14),
-                            Text('Loading next questions…',
-                                style: AppTheme.bodyMuted),
-                          ],
-                        ),
-                      ),
-                    )
-                  : Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(16),
-                        border:
-                            Border.all(color: AppTheme.divider, width: 1),
-                      ),
-                      child: Center(
-                        child: Text(
-                          question.text,
-                          textAlign: TextAlign.center,
-                          style: AppTheme.questionText,
-                        ),
-                      ),
+          if (currentStreak >= 2)
+            Positioned(
+              top: 156,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      color: AppTheme.blazeGold,
+                      size: 22,
                     ),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // ── Answer buttons ────────────────────────────────────────────────
-          if (!loadingNextBatch)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Column(
-                children: [
-                  for (int i = 0; i < question.answers.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 8),
-                    _AnswerButton(
-                      letter: letters[i],
-                      text: question.answers[i],
-                      state: _stateFor(question.answers[i]),
-                      onTap: answered
-                          ? null
-                          : () => onAnswer(question.answers[i]),
-                    ),
+                    const SizedBox(width: 4),
+                    Text('x$currentStreak STREAK', style: AppTheme.streakText),
                   ],
-                ],
+                ),
               ),
             ),
-
-          if (loadingNextBatch) const SizedBox(height: 20),
         ],
       ),
-    ),
-    if (currentStreak >= 2)
-      Positioned(
-        top: 137,
-        left: 0,
-        right: 0,
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.local_fire_department_rounded,
-                  color: AppTheme.blazeGold, size: 18),
-              const SizedBox(width: 4),
-              Text('x$currentStreak STREAK', style: AppTheme.streakText),
-            ],
-          ),
-        ),
-      ),
-  ],
-  ),
-);
+    );
   }
 }
 
@@ -1102,8 +1203,8 @@ class _CircularTimerState extends State<_CircularTimer>
         return Transform.scale(
           scale: pulseScale * bumpScaleVal,
           child: SizedBox(
-            width: 80,
-            height: 80,
+            width: 90,
+            height: 90,
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -1181,9 +1282,7 @@ class _ArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ArcPainter old) =>
-      old.progress != progress ||
-      old.color != color ||
-      old.bgColor != bgColor;
+      old.progress != progress || old.color != color || old.bgColor != bgColor;
 }
 
 // ── Answer button ─────────────────────────────────────────────────────────────
@@ -1207,22 +1306,19 @@ class _AnswerButton extends StatelessWidget {
     final isWrong = state == _AnswerState.wrong;
     final isAnswered = isCorrect || isWrong;
 
-    final Color accent =
-        isCorrect ? AppTheme.blazeGold : AppTheme.sparkPink;
-    final Color bg =
-        isAnswered ? accent.withAlpha(30) : AppTheme.cardSurface;
-    final Color borderColor =
-        isAnswered ? accent : AppTheme.divider;
+    final Color accent = isCorrect ? AppTheme.blazeGold : AppTheme.sparkPink;
+    final Color bg = isAnswered ? accent.withAlpha(30) : AppTheme.cardSurface;
+    final Color borderColor = isAnswered ? accent : AppTheme.divider;
     final double borderWidth = isAnswered ? 2.0 : 1.0;
-    final Color textColor =
-        isAnswered ? accent : AppTheme.whiteText;
+    final Color textColor = isAnswered ? accent : AppTheme.whiteText;
     final Color letterBg = isCorrect
         ? AppTheme.blazeGold
         : isWrong
-            ? AppTheme.sparkPink.withAlpha(200)
-            : AppTheme.voidBlack;
-    final Color letterText =
-        isCorrect ? AppTheme.voidBlack : AppTheme.whiteText;
+        ? AppTheme.sparkPink.withAlpha(200)
+        : AppTheme.voidBlack;
+    final Color letterText = isCorrect
+        ? AppTheme.voidBlack
+        : AppTheme.whiteText;
 
     return GestureDetector(
       onTap: onTap,
@@ -1316,8 +1412,9 @@ class _ResultsView extends StatelessWidget {
     final beginProgress = (didLevelUp || rangeSize == 0)
         ? 0.0
         : ((xpBefore - currThreshold) / rangeSize).clamp(0.0, 1.0);
-    final endProgress =
-        rangeSize > 0 ? (xpInLevel / rangeSize).clamp(0.0, 1.0) : 1.0;
+    final endProgress = rangeSize > 0
+        ? (xpInLevel / rangeSize).clamp(0.0, 1.0)
+        : 1.0;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -1330,9 +1427,14 @@ class _ResultsView extends StatelessWidget {
               width: 88,
               height: 88,
               decoration: const BoxDecoration(
-                  color: AppTheme.blazeGold, shape: BoxShape.circle),
-              child: const Icon(Icons.emoji_events_rounded,
-                  color: AppTheme.voidBlack, size: 48),
+                color: AppTheme.blazeGold,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.emoji_events_rounded,
+                color: AppTheme.voidBlack,
+                size: 48,
+              ),
             ),
             const SizedBox(height: 16),
             Text(_headline, style: AppTheme.storeTitle),
@@ -1343,21 +1445,23 @@ class _ResultsView extends StatelessWidget {
             // Stats card
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
               decoration: BoxDecoration(
                 color: AppTheme.cardSurface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                    color: AppTheme.blazeGold.withAlpha(80), width: 1),
+                  color: AppTheme.blazeGold.withAlpha(80),
+                  width: 1,
+                ),
               ),
               child: Column(
                 children: [
                   _ResultRow(
                     label: 'FINAL SCORE',
                     value: '$score',
-                    valueStyle:
-                        AppTheme.storeTitle.copyWith(color: AppTheme.blazeGold),
+                    valueStyle: AppTheme.storeTitle.copyWith(
+                      color: AppTheme.blazeGold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   const Divider(color: AppTheme.divider, height: 1),
@@ -1376,8 +1480,7 @@ class _ResultsView extends StatelessWidget {
             // Rewards card
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
               decoration: BoxDecoration(
                 color: AppTheme.cardSurface,
                 borderRadius: BorderRadius.circular(16),
@@ -1407,15 +1510,20 @@ class _ResultsView extends StatelessWidget {
                   // XP row with progress bar
                   Row(
                     children: [
-                      const Icon(Icons.flash_on_rounded,
-                          color: AppTheme.blazeGold, size: 18),
+                      const Icon(
+                        Icons.flash_on_rounded,
+                        color: AppTheme.blazeGold,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Text('XP', style: AppTheme.sectionHeader),
                       const Spacer(),
                       if (didLevelUp)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.blazeGold,
                             borderRadius: BorderRadius.circular(6),
@@ -1423,8 +1531,9 @@ class _ResultsView extends StatelessWidget {
                           child: Text(
                             'LEVEL UP! → Lv.$levelAfter',
                             style: AppTheme.caption.copyWith(
-                                color: AppTheme.voidBlack,
-                                fontWeight: FontWeight.w800),
+                              color: AppTheme.voidBlack,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         )
                       else
@@ -1439,8 +1548,10 @@ class _ResultsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   TweenAnimationBuilder<double>(
-                    tween:
-                        Tween<double>(begin: beginProgress, end: endProgress),
+                    tween: Tween<double>(
+                      begin: beginProgress,
+                      end: endProgress,
+                    ),
                     duration: const Duration(milliseconds: 1200),
                     curve: Curves.easeOut,
                     builder: (_, val, _) => ClipRRect(
@@ -1450,7 +1561,8 @@ class _ResultsView extends StatelessWidget {
                         minHeight: 10,
                         backgroundColor: AppTheme.voidBlack,
                         valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppTheme.blazeGold),
+                          AppTheme.blazeGold,
+                        ),
                       ),
                     ),
                   ),
@@ -1462,8 +1574,10 @@ class _ResultsView extends StatelessWidget {
                         'Lv.$levelAfter · ${UserService.titleForLevel(levelAfter)}',
                         style: AppTheme.caption,
                       ),
-                      Text('$xpInLevel / $rangeSize xp',
-                          style: AppTheme.caption),
+                      Text(
+                        '$xpInLevel / $rangeSize xp',
+                        style: AppTheme.caption,
+                      ),
                     ],
                   ),
                 ],
@@ -1475,28 +1589,37 @@ class _ResultsView extends StatelessWidget {
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.blazeGold.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: AppTheme.blazeGold.withAlpha(60)),
+                  border: Border.all(color: AppTheme.blazeGold.withAlpha(60)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.lock_outline_rounded,
-                        color: AppTheme.blazeGold, size: 18),
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      color: AppTheme.blazeGold,
+                      size: 18,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Sign in to save your score and rewards',
-                        style: AppTheme.caption
-                            .copyWith(color: AppTheme.blazeGold, fontSize: 12),
+                        style: AppTheme.caption.copyWith(
+                          color: AppTheme.blazeGold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded,
-                        color: AppTheme.blazeGold, size: 14),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: AppTheme.blazeGold,
+                      size: 14,
+                    ),
                   ],
                 ),
               ),
@@ -1513,9 +1636,11 @@ class _ResultsView extends StatelessWidget {
                   color: AppTheme.blazeGold,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Text('PLAY AGAIN',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.buttonLabel.copyWith(fontSize: 18)),
+                child: Text(
+                  'PLAY AGAIN',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.buttonLabel.copyWith(fontSize: 18),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -1528,10 +1653,14 @@ class _ResultsView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppTheme.divider, width: 1),
                 ),
-                child: Text('HOME',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.buttonLabel
-                        .copyWith(color: AppTheme.mutedText, fontSize: 16)),
+                child: Text(
+                  'HOME',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.buttonLabel.copyWith(
+                    color: AppTheme.mutedText,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -1617,7 +1746,10 @@ class _CheatButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.cardSurface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppTheme.sparkPink.withAlpha(100), width: 1),
+          border: Border.all(
+            color: AppTheme.sparkPink.withAlpha(100),
+            width: 1,
+          ),
         ),
         child: Text(
           label,
@@ -1668,18 +1800,17 @@ class _FeedbackAnimationState extends State<_FeedbackAnimation>
     // Pop: 0.6 → 1.2 over first 300ms, settle to 1.0 over next 100ms, hold
     _scale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.6, end: 1.2)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0.6,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 37.5,
       ),
       TweenSequenceItem(
         tween: Tween<double>(begin: 1.2, end: 1.0),
         weight: 12.5,
       ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.0),
-        weight: 50,
-      ),
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 50),
     ]).animate(_ctrl);
 
     // Float upward 0 → -150px over 600ms then hold
@@ -1771,7 +1902,8 @@ class _ResultRow extends StatelessWidget {
         Text(label, style: AppTheme.sectionHeader),
         Text(
           value,
-          style: valueStyle ??
+          style:
+              valueStyle ??
               AppTheme.statValue.copyWith(color: AppTheme.whiteText),
         ),
       ],

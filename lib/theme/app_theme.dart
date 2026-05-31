@@ -295,7 +295,7 @@ class AppTheme {
 
   /// Solo game — current streak counter
   static TextStyle get streakText => GoogleFonts.newAmsterdam(
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: FontWeight.w800,
     color: blazeGold,
   );
@@ -308,23 +308,23 @@ class AppTheme {
     color: whiteText,
   );
 
-  /// Solo game screen — question card text
-  static TextStyle get questionText => GoogleFonts.newAmsterdam(
-    fontSize: 20,
-    fontWeight: FontWeight.w700,
+  /// Solo game screen — question card text (Nunito for readability)
+  static TextStyle get questionText => GoogleFonts.nunito(
+    fontSize: 26,
+    fontWeight: FontWeight.w600,
     color: whiteText,
-    height: 1.4,
+    height: 1.5,
   );
 
   /// Solo game screen — circular countdown timer number
   static TextStyle get timerText => GoogleFonts.newAmsterdam(
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: FontWeight.w800,
     color: whiteText,
   );
 
-  /// Solo game screen — answer button label
-  static TextStyle get answerText => GoogleFonts.newAmsterdam(
+  /// Solo game screen — answer button label (Nunito for readability)
+  static TextStyle get answerText => GoogleFonts.nunito(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: whiteText,

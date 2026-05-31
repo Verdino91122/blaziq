@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -212,7 +213,7 @@ class _XpBar extends StatelessWidget {
   }
 }
 
-class _BrainLogoSection extends StatelessWidget {
+class _BrainLogoSection extends StatefulWidget {
   final bool cheatMode;
   final VoidCallback onCheatToggle;
 
@@ -222,56 +223,57 @@ class _BrainLogoSection extends StatelessWidget {
   });
 
   @override
+  State<_BrainLogoSection> createState() => _BrainLogoSectionState();
+}
+
+class _BrainLogoSectionState extends State<_BrainLogoSection> {
+  int _tapCount = 0;
+  Timer? _resetTimer;
+
+  @override
+  void dispose() {
+    _resetTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onLogoTap() {
+    _tapCount++;
+    _resetTimer?.cancel();
+    if (_tapCount >= 7) {
+      _tapCount = 0;
+      widget.onCheatToggle();
+      return;
+    }
+    // Reset counter if no tap within 3 seconds
+    _resetTimer = Timer(const Duration(seconds: 3), () {
+      _tapCount = 0;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Outer Column: circle row on top, "SELECT A MODE" text below.
-    // Separating the text from the circle row means the mirror spacer
-    // is always exactly 88px (8 gap + 80 tap zone), regardless of text width,
-    // so the tap zone is always 8px past the circle's right edge.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Row: mirror spacer | circle | gap | invisible tap zone
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Mirror spacer — matches (gap 8 + tap zone 80) so circle stays centered
-            const SizedBox(width: 88),
-            // App logo
-            Image.asset(
-              'assets/images/inapp_logo.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
-            ),
-            // Gap
-            const SizedBox(width: 8),
-            // Invisible tap zone + optional DEV badge below it
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onCheatToggle,
-                  child: const SizedBox(width: 80, height: 80),
-                ),
-                if (cheatMode)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'DEV',
-                      style: AppTheme.sectionHeader.copyWith(
-                        color: AppTheme.sparkPink,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+        GestureDetector(
+          onTap: _onLogoTap,
+          child: Image.asset(
+            'assets/images/inapp_logo.png',
+            width: 80,
+            height: 80,
+            fit: BoxFit.contain,
+          ),
         ),
         const SizedBox(height: 14),
         Text('SELECT A MODE', style: AppTheme.selectModeLabel),
+        if (widget.cheatMode)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'DEV MODE',
+              style: AppTheme.sectionHeader.copyWith(color: AppTheme.sparkPink),
+            ),
+          ),
       ],
     );
   }

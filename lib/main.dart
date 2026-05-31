@@ -58,13 +58,19 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 2;
 
-  static const List<Widget> _screens = [
-    ProfileScreen(),
-    RankScreen(),
-    HomeScreen(),
-    StoreScreen(),
-    MenuScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const ProfileScreen(),
+      const RankScreen(),
+      const HomeScreen(),
+      const StoreScreen(),
+      MenuScreen(onNavigateToProfile: () => setState(() => _currentIndex = 0)),
+    ];
+  }
 
   static const _navItems = [
     _NavItem(Icons.person_outline, Icons.person, 'Profile'),

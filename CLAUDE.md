@@ -13,9 +13,11 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - Open Trivia DB API (https://opentdb.com/api.php) for questions
 - http package for API calls (handles both mobile and web)
 - flutter_svg ^2.0.0 for SVG nav icons
-- google_fonts ^8.0.0 for New Amsterdam font
+- google_fonts ^8.0.0 for New Amsterdam + Nunito fonts
 - flutter_native_splash ^2.4.1 for native splash screen (runtime dep)
 - flutter_launcher_icons ^0.14.1 for app icon generation (dev dep)
+- audioplayers ^6.0.0 for sound effects and background music
+- shared_preferences ^2.3.0 for persisting settings (sounds, music, haptics)
 - State management: Provider or simple StatefulWidget — nothing heavier
 
 ## Design System
@@ -28,7 +30,8 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - Muted text: #888888
 - Corner radius: 12–16px rounded cards
 - Headings: bold, uppercase, wide letter spacing
-- Font: Google Font "New Amsterdam" for all text (google_fonts ^8.0.0)
+- Primary font: Google Font "New Amsterdam" — all headings, titles, scores, nav labels, UI labels
+- Secondary font: Google Font "Nunito" — question text and answer button text only
 - Bottom nav bar: dark background, gold sliding circle indicator for selected tab
 
 ## Brand Identity
@@ -64,8 +67,8 @@ Selected tab: icon only (no label). Unselected: icon + label below.
 - Header bar: user avatar (circle, top left), coins count with star icon,
   XP progress bar with level number and title — all live from Firestore
 - Center: Blaziq logo (assets/images/inapp_logo.png, 80×80) + "SELECT A MODE" text
-- Invisible GestureDetector same size as logo, to the right of it —
-  toggles developer cheat mode in solo game screen
+- Developer cheat mode: activated by tapping the logo 7 times within 3 seconds;
+  counter resets if no tap within 3 seconds; DEV MODE label appears below SELECT A MODE
 - Swipeable horizontal carousel with 3 mode cards:
   1. Solo — play alone vs the clock (fully functional)
   2. Play with Friend — diagonal "COMING SOON" ribbon, non-tappable
@@ -74,7 +77,7 @@ Selected tab: icon only (no label). Unselected: icon + label below.
 
 ### Solo Mode Game Screen (not in nav bar)
 - Endless time-based mode — no fixed question limit
-- Timer starts at 30 seconds, displayed as circular countdown
+- Timer starts at 30 seconds, displayed as circular countdown (90×90px)
 - Pre-game countdown overlay: 3, 2, 1, GO! before game starts
   - Shows a muted 'CANCEL' button below the number (hidden on GO!)
   - Tapping CANCEL returns to home screen immediately
@@ -93,8 +96,7 @@ Selected tab: icon only (no label). Unselected: icon + label below.
 - Difficulty escalation: Easy → Medium (5 correct) → Hard (10 correct)
 - Floating feedback animation: '+4s', '+6s', '+8s', '+10s', or '-3s' flies up to timer on answer
 - Timer bump animation when floating text arrives at timer
-- Streak indicator floats above layout using Stack/Positioned
-- Developer cheat mode: toggled by invisible button right of logo
+- Streak indicator floats using Stack/Positioned, centered between timer and question card
 - Scoring formula at game end (see Scoring & Rewards System section for full detail):
   - base_points = correct_answers × 100
   - streak_bonus = highest_streak × 50
@@ -103,11 +105,29 @@ Selected tab: icon only (no label). Unselected: icon + label below.
 - Results screen: headline based on performance, final score, correct count,
   highest streak, accuracy %, score/coins/XP earned with count-up animations,
   XP progress bar, LEVEL UP! badge if threshold crossed
-- API rate limit: auto-retry once after 5s on HTTP 429 (OpenTDB rate limit)
-- Use kIsWeb with corsproxy.io prefix for web builds:
-  final baseUrl = 'https://opentdb.com/api.php?amount=10&type=multiple';
-  final url = kIsWeb ? 'https://corsproxy.io/?$baseUrl' : baseUrl;
+- API: fetches 50 questions per batch; auto-retry once after 5s on HTTP 429
+- Use kIsWeb with corsproxy.io prefix for web builds
 - Always decode HTML entities in questions and answers
+- Question text: Nunito font (AppTheme.questionText)
+- Answer button text: Nunito font (AppTheme.answerText)
+
+#### Sound effects (SoundService)
+- Background music starts when countdown ends, loops at volume 0.4
+- correct.wav on correct answer
+- wrong.mp3 on wrong answer
+- gameover.wav on game over
+- At 8 seconds remaining: background music stops, tictoc.wav loops
+- Streak bonus pushing time back above 8s: tic-toc stops, background music resumes
+- SFX players use AndroidAudioFocus.none so they never interrupt background music
+- All sounds respect the sounds_enabled / music_enabled preferences
+
+#### Haptics (HapticFeedback — no package needed)
+- Correct answer: lightImpact
+- Streak milestone (3rd or 5th in a row): mediumImpact
+- Wrong answer: heavyImpact
+- Timer ≤ 8 seconds: selectionClick once per second
+- _hapticsEnabled cached at game start — checked synchronously (no async delay)
+- Requires VIBRATE permission in AndroidManifest.xml
 
 ### Profile Screen (designs/profile_screen.png)
 - The app always has a signed-in user (anonymous or Google) — a pure signed-out
@@ -141,41 +161,34 @@ Selected tab: icon only (no label). Unselected: icon + label below.
   so existing users are seeded immediately even if current game doesn't beat their personal best
 - When online mode is added later, leaderboard will switch to online ratings
 
-### Store Screen (designs/store_screen.png)
+### Store Screen
 - Title: "SHOP"
-- Dark navy background matching rest of app (#1A1A2E)
-- Header shows current coin balance with gold star icon
-- 3 bundle cards with dark card surface, gold border:
-  - Mini Bundle: 600 coins + 5 jokers — $12.99
-  - Medium Bundle: 1000 coins + 10 jokers + power-ups — $22.99
-    (show "BEST OFFER" red ribbon badge)
-  - Large Bundle: 1600 coins + 20 jokers + more power-ups — $38.99
-- Price buttons: gold background, dark text
-- Purchase buttons visible but non-functional (placeholder)
+- Dark navy background (#1A1A2E)
+- Header shows current coin balance (live from Firestore via userStream)
+- Center: inapp_logo.png + "COMING SOON" in blazeGold + muted subtitle
+- Bundle cards and purchase buttons removed — placeholder until Phase 9
 
 ### Menu/Settings Screen (designs/menu_screen.png)
 - Title: "SETTINGS"
 - Section AUDIO & HAPTICS:
-  - Sound Effects toggle (default on)
-  - Background Music toggle (default on)
-  - Haptics toggle (default on)
+  - Sound Effects toggle — persisted via shared_preferences (sounds_enabled)
+  - Background Music toggle — persisted via shared_preferences (music_enabled)
+  - Haptics toggle — persisted via shared_preferences (haptics_enabled)
+  - All toggles load saved state on screen init; default true
+  - Active thumb/track color: AppTheme.blazeGold
 - Section NOTIFICATIONS:
-  - Push Notifications toggle (default on)
-  - In-App Notifications toggle (default on)
+  - Push Notifications toggle (UI only, not yet wired)
+  - In-App Notifications toggle (UI only, not yet wired)
 - Section ACCOUNT:
-  - Edit Profile row (navigates to profile)
-  - Sign Out row
+  - Edit Profile — navigates to Profile tab (index 0) via MainShell callback
+  - Sign Out — confirmation dialog, only functional when signed in with Google;
+    guests see a SnackBar: "You are playing as a guest — no account to sign out of"
 - Section SUPPORT & INFORMATION:
-  - How To Play
-  - About
-  - Rate App
-  - Share App
-- Toggle active color: AppTheme.blazeGold
+  - How To Play / About / Rate App / Share App — each shows "Coming Soon" SnackBar
 
 ## Leaderboard Strategy
 - Phase 3-5: Leaderboard shows solo mode best scores only
 - Phase 6+: Leaderboard will show online match ratings
-- Two separate concepts: solo best score vs online competitive rating
 - Worldwide tab: all players globally
 - Canada tab: players filtered by country field in Firestore
 - Friends tab: players the user follows (Phase 6+)
@@ -247,14 +260,6 @@ number and title. Power-ups and jokers are reserved for a later phase.
 ## Kahoot Mode (Phase 8 — planned last)
 A live quiz mode where one user hosts a session and multiple players
 join via a room code and answer simultaneously in real time.
-Host features:
-- Manually enter custom questions and answers
-- Control question pacing
-- See live results as players answer
-Player features:
-- Join via room code
-- Answer on timer
-- See live leaderboard after each question
 This is the most complex feature — build after friend and online modes are complete.
 
 ## Web Builds (Chrome testing)
@@ -276,11 +281,11 @@ This is the most complex feature — build after friend and online modes are com
 - Dispose all AnimationControllers and Timers in dispose()
 - Use if statements not Visibility widgets for conditional rendering
 - Streak indicator and floating feedback must use Stack/Positioned
+- Haptic calls must be synchronous — cache preference, never call async inside timer ticks
 
 ## Flutter Code Standards
 - Always use const constructors wherever possible
 - Separate each screen into its own file in lib/screens/
-- Separate reusable widgets into lib/widgets/
 - Use lib/theme/app_theme.dart for all colors and text styles
 - Never hardcode colors inline — always reference AppTheme
 - Always wrap scrollable content in SingleChildScrollView
@@ -302,15 +307,14 @@ lib/
 │   └── solo_game_screen.dart
 └── services/
     ├── auth_service.dart
-    └── user_service.dart
+    ├── user_service.dart
+    ├── sound_service.dart      ← audioplayers wrapper; SFX + background music
+    └── preferences_service.dart ← shared_preferences wrapper; sounds/music/haptics
 
 ## Project Status
 
 ### Completed
 - Flutter project created (com.blaziq.blaziq)
-- CLAUDE.md written and placed in project root
-- Designs folder with 5 Figma screen references added
-- Brand identity defined (colors, logo concept, typography)
 - Phase 1: App shell — navigation bar and all 5 screen layouts
 - Phase 2: Solo game mode (Open Trivia DB API + game logic) — COMPLETE
   - ✅ Question fetching with HTML entity decoding
@@ -321,55 +325,53 @@ lib/
   - ✅ Floating feedback animations (+4s / -3s flies upward with scale pop + fade)
   - ✅ Timer bump animation (scale + color flash when floating text arrives)
   - ✅ Streak indicator as Stack/Positioned overlay (never shifts layout)
-  - ✅ Developer cheat mode (invisible tap zone on home logo, 5 cheat buttons in game)
+  - ✅ Developer cheat mode (7 rapid taps on logo within 3s, 5 cheat buttons in game)
   - ✅ Results screen with full 3-currency rewards (score, XP, coins)
 - Phase 3: Firebase Auth + Google Sign-In + Anonymous Auth — COMPLETE
   - ✅ firebase_core, firebase_auth, cloud_firestore, google_sign_in packages added
-  - ✅ Firebase project blaziq-1822 configured (firebase_options.dart + google-services.json)
-  - ✅ Google Services Gradle plugin applied (Kotlin DSL .kts files)
-  - ✅ auth_service.dart — anonymous sign-in on first launch, Google Sign-In with account linking,
-       migration fallback (credential-already-in-use → merge anon data → sign in as Google user),
-       sign-out re-enters anonymous auth so app always has a UID
-  - ✅ user_service.dart — ensureUserDoc handles anon (Guest_XXXXXX) and Google users,
-       upgradeToGoogle (updates doc + awards 200 coin linking bonus),
-       mergeAnonData (migrates XP/games/best score to Google account),
-       saveGameResult, level helpers
-  - ✅ profile_screen.dart — anonymous users see stats + SAVE YOUR PROGRESS banner + Google sign-in;
-       Google users see full signed-in profile; signed-out state never shown
+  - ✅ Firebase project blaziq-1822 configured
+  - ✅ auth_service.dart — anonymous sign-in, Google Sign-In with account linking,
+       migration fallback, sign-out re-enters anonymous auth
+  - ✅ user_service.dart — ensureUserDoc, upgradeToGoogle, mergeAnonData, saveGameResult
+  - ✅ profile_screen.dart — anonymous and Google states; signed-out state never shown
   - ✅ Three-currency scoring system: score, XP (with level-up), coins (with daily bonus)
   - ✅ Home header bar: avatar + coins + XP bar, live from Firestore
-  - ✅ Results screen saves rewards to Firestore after every game (anon and Google)
+  - ✅ Results screen saves to Firestore after every game
   - ✅ Font: New Amsterdam (google_fonts ^8.0.0)
-  - ✅ Nav labels: Shop, Settings
-  - ✅ X quit button + confirmation dialog (timer runs during dialog)
-  - ✅ Sign-out confirmation dialog on profile screen
   - ✅ Bottom nav bar: SVG icons, 77px, sliding gold circle, selected = icon only
 - Phase 4: Solo Leaderboard — COMPLETE
   - ✅ leaderboard Firestore collection — written by saveGameResult() after every game
   - ✅ effectiveBest = max(score, currentBest) seeds existing users immediately
-  - ✅ updateLeaderboard() guards against unnecessary writes (only writes on new best)
   - ✅ leaderboardStream() — live ordered query powering Rank screen
-  - ✅ Rank screen: StreamBuilder, podium (top 3) + scrollable list (4th+)
-  - ✅ Worldwide tab: all players; Canada tab: country == 'CA'; Friends: coming soon
-  - ✅ country defaults to 'CA' for all new docs; existing users seeded with 'CA' on next game
-  - ✅ Current user highlighted: gold border + tint in both podium and list rows
-  - ✅ Avatar: NetworkImage when avatarUrl set, initials fallback with deterministic color
-  - ✅ Loading spinner, empty state, coming-soon state all handled
+  - ✅ Rank screen: podium (top 3) + scrollable list (4th+), current user highlighted
+  - ✅ Worldwide / Canada / Friends tabs
+  - ✅ country defaults to 'CA'; existing users seeded on next game
   - ✅ Pre-game countdown: CANCEL button + Android back button blocked (PopScope)
   - ✅ Android back button during game: triggers quit confirmation dialog
-  - ✅ OpenTDB HTTP 429 auto-retry after 5s (handles rapid game restarts)
+  - ✅ OpenTDB HTTP 429 auto-retry after 5s
 - App icon + splash screen — COMPLETE
-  - ✅ flutter_launcher_icons: adaptive icon (foreground + #1A1A2E background), Android + iOS
-  - ✅ flutter_native_splash: full-screen #1A1A2E with gold bolt logo, Android 12 splash API supported
-  - ✅ Splash preserved until Firebase + anonymous auth are ready, then removed
-  - ✅ Home screen logo replaced with assets/images/inapp_logo.png (Image.asset, 80×80)
+  - ✅ flutter_launcher_icons: adaptive icon (foreground + #1A1A2E background)
+  - ✅ flutter_native_splash: #1A1A2E background, Android 12 uses launcher icon
+  - ✅ Splash preserved until Firebase + anonymous auth ready, then removed
+  - ✅ Home screen logo: assets/images/inapp_logo.png (80×80)
+- Phase 5: Polish — IN PROGRESS
+  - ✅ Sound effects + background music (audioplayers ^6.0.0, SoundService)
+  - ✅ Haptics via HapticFeedback (no package); VIBRATE permission added
+  - ✅ Settings screen wired: audio/haptic toggles persist via shared_preferences
+  - ✅ Settings → Edit Profile navigates to Profile tab
+  - ✅ Settings → Sign Out: confirmation dialog for Google users; SnackBar for guests
+  - ✅ Settings → support rows show "Coming Soon" SnackBar
+  - ✅ Store screen replaced with Coming Soon placeholder (live coin balance kept)
+  - ✅ Nunito font for question text and answer button text
+  - ✅ Dev cheat mode: 7 rapid taps on logo (was invisible tap zone)
+  - ✅ Game layout: timer 90×90px, streak indicator repositioned between timer and question card
 
 ### Next
-- Phase 5: Polish + Google Play Store submission
+- Phase 5: Google Play Store submission
 
 ### Pending
 - Phase 6: Friend mode (room codes + real-time Firestore)
 - Phase 7: Online matchmaking (random opponent + online leaderboard)
 - Phase 8: Kahoot mode (host + join + manual questions)
 - Phase 9: Store + in-app purchases
-- Phase 10: Final polish, sounds, haptics, App Store (iOS) submission
+- Phase 10: Final polish, App Store (iOS) submission

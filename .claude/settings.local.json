@@ -16,7 +16,8 @@
       "Bash(cp \"C:/Users/user/Documents/Profile_selected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
       "Bash(cp \"C:/Users/user/Documents/Rank_nonselected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
       "Bash(dir \"c:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\assets\" /s /b)",
-      "Bash(dart run *)"
+      "Bash(dart run *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

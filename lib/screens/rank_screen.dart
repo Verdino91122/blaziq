@@ -165,9 +165,7 @@ class _LeaderboardBody extends StatelessWidget {
           );
         }
 
-        var entries = (snapshot.data?.docs ?? [])
-            .map(_Entry.fromDoc)
-            .toList();
+        var entries = (snapshot.data?.docs ?? []).map(_Entry.fromDoc).toList();
 
         // Canada tab: client-side filter
         if (filterIndex == 1) {
@@ -280,17 +278,17 @@ class _PodiumCard extends StatelessWidget {
   });
 
   Color get _badgeColor => switch (rank) {
-        1 => AppTheme.blazeGold,
-        2 => AppTheme.rankSilver,
-        _ => AppTheme.rankBronze,
-      };
+    1 => AppTheme.blazeGold,
+    2 => AppTheme.rankSilver,
+    _ => AppTheme.rankBronze,
+  };
 
   String get _ordinal => switch (rank) {
-        1 => 'st',
-        2 => 'nd',
-        3 => 'rd',
-        _ => 'th',
-      };
+    1 => 'st',
+    2 => 'nd',
+    3 => 'rd',
+    _ => 'th',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -309,8 +307,8 @@ class _PodiumCard extends StatelessWidget {
           color: isCurrentUser
               ? AppTheme.blazeGold
               : isFirst
-                  ? AppTheme.blazeGold.withAlpha(120)
-                  : accentColor.withAlpha(80),
+              ? AppTheme.blazeGold.withAlpha(120)
+              : accentColor.withAlpha(80),
           width: isCurrentUser || isFirst ? 1.5 : 1.0,
         ),
       ),
@@ -378,8 +376,11 @@ class _PodiumCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.star_rounded,
-                  color: AppTheme.blazeGold, size: 12),
+              const Icon(
+                Icons.star_rounded,
+                color: AppTheme.blazeGold,
+                size: 12,
+              ),
               const SizedBox(width: 2),
               Text(_fmt(entry.score), style: AppTheme.podiumScore),
             ],
@@ -420,10 +421,7 @@ class _PlayerRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 28,
-            child: Text('$rank', style: AppTheme.rankNumber),
-          ),
+          SizedBox(width: 28, child: Text('$rank', style: AppTheme.rankNumber)),
           CircleAvatar(
             radius: 18,
             backgroundColor: accentColor,
@@ -435,19 +433,21 @@ class _PlayerRow extends StatelessWidget {
                     entry.username.isNotEmpty
                         ? entry.username[0].toUpperCase()
                         : '?',
-                    style: AppTheme.playerName
-                        .copyWith(fontWeight: FontWeight.w800),
+                    style: AppTheme.playerName.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   )
                 : null,
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(entry.username, style: AppTheme.playerName),
-          ),
+          Expanded(child: Text(entry.username, style: AppTheme.playerName)),
           Row(
             children: [
-              const Icon(Icons.star_rounded,
-                  color: AppTheme.blazeGold, size: 16),
+              const Icon(
+                Icons.star_rounded,
+                color: AppTheme.blazeGold,
+                size: 16,
+              ),
               const SizedBox(width: 4),
               Text(_fmt(entry.score), style: AppTheme.score),
             ],
@@ -472,8 +472,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.emoji_events_outlined,
-                color: AppTheme.mutedText, size: 56),
+            const Icon(
+              Icons.emoji_events_outlined,
+              color: AppTheme.mutedText,
+              size: 56,
+            ),
             const SizedBox(height: 16),
             Text(
               message,
@@ -500,12 +503,19 @@ class _ComingSoonView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.people_outline_rounded,
-                color: AppTheme.mutedText, size: 56),
+            const Icon(
+              Icons.people_outline_rounded,
+              color: AppTheme.mutedText,
+              size: 56,
+            ),
             const SizedBox(height: 16),
-            Text('COMING SOON',
-                style: AppTheme.sectionHeader.copyWith(
-                    color: AppTheme.blazeGold, letterSpacing: 3)),
+            Text(
+              'COMING SOON',
+              style: AppTheme.sectionHeader.copyWith(
+                color: AppTheme.blazeGold,
+                letterSpacing: 3,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               'Challenge your friends once\nfriend mode is live.',
