@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -48,20 +49,25 @@ class AuthService {
           try {
             final cred = await anonUser!.linkWithPopup(provider);
             await UserService.upgradeToGoogle(cred.user!);
+            await _patchUsernameIfNeeded(cred.user!);
             return cred;
           } on FirebaseAuthException catch (e) {
             if ((e.code == 'credential-already-in-use' ||
                     e.code == 'email-already-in-use') &&
                 e.credential != null) {
-              return _migrateAndSignIn(
+              final cred = await _migrateAndSignIn(
                 anonUid: anonUser!.uid,
                 credential: e.credential!,
               );
+              if (cred?.user != null) await _patchUsernameIfNeeded(cred!.user!);
+              return cred;
             }
             return null;
           }
         }
-        return await _auth.signInWithPopup(provider);
+        final cred = await _auth.signInWithPopup(provider);
+        if (cred.user != null) await _patchUsernameIfNeeded(cred.user!);
+        return cred;
       } else {
         final googleUser = await GoogleSignIn().signIn();
         if (googleUser == null) return null;
@@ -74,20 +80,25 @@ class AuthService {
           try {
             final cred = await anonUser!.linkWithCredential(credential);
             await UserService.upgradeToGoogle(cred.user!);
+            await _patchUsernameIfNeeded(cred.user!);
             return cred;
           } on FirebaseAuthException catch (e) {
             if ((e.code == 'credential-already-in-use' ||
                     e.code == 'email-already-in-use') &&
                 e.credential != null) {
-              return _migrateAndSignIn(
+              final cred = await _migrateAndSignIn(
                 anonUid: anonUser!.uid,
                 credential: e.credential!,
               );
+              if (cred?.user != null) await _patchUsernameIfNeeded(cred!.user!);
+              return cred;
             }
             return null;
           }
         }
-        return await _auth.signInWithCredential(credential);
+        final cred = await _auth.signInWithCredential(credential);
+        if (cred.user != null) await _patchUsernameIfNeeded(cred.user!);
+        return cred;
       }
     } catch (_) {
       return null;
@@ -112,6 +123,22 @@ class AuthService {
     }
     await UserService.deleteUserDoc(anonUid).catchError((_) {});
     return cred;
+  }
+
+  /// If the Firestore username is 'Player' or blank, overwrites it with
+  /// the real Google display name. Called after every successful Google sign-in.
+  static Future<void> _patchUsernameIfNeeded(User user) async {
+    if (user.isAnonymous) return;
+    final displayName = FirebaseAuth.instance.currentUser?.displayName;
+    if (displayName == null || displayName.isEmpty) return;
+    final ref =
+        FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await ref.get();
+    if (!doc.exists) return;
+    final current = (doc.data()?['username'] as String?) ?? '';
+    if (current.isEmpty || current == 'Player') {
+      await ref.update({'username': displayName});
+    }
   }
 
   /// Signs out and immediately re-enters anonymous auth so the app

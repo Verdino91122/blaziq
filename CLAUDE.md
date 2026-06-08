@@ -375,3 +375,7 @@ lib/
 - Phase 8: Kahoot mode (host + join + manual questions)
 - Phase 9: Store + in-app purchases
 - Phase 10: Final polish, App Store (iOS) submission
+
+Privacy link: https://doc-hosting.flycricket.io/blaziq-privacy-policy/11284ce3-7a2f-4a89-9d8b-33129af162b5/privacy
+Terms of use links: https://doc-hosting.flycricket.io/blaziq-terms-of-use/7bd62b5d-fd5d-412d-992c-5b4105c59595/terms
+Form for account deletion in case asked by user: https://docs.google.com/forms/d/e/1FAIpQLScGVXJ20ZXmBww-w7RjyhLkG_Cl8OaZJINS1In8Wq0AkwU26g/viewform?usp=header

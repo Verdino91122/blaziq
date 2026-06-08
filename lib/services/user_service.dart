@@ -12,9 +12,19 @@ class UserService {
     final ref = _db.collection('users').doc(user.uid);
     final doc = await ref.get();
     if (!doc.exists) {
-      final username = user.isAnonymous
-          ? 'Guest_${user.uid.substring(0, 6)}'
-          : (user.displayName ?? 'Player');
+      String username;
+      if (user.isAnonymous) {
+        username = 'Guest_${user.uid.substring(0, 6)}';
+      } else {
+        // Reload to ensure the display name is available (can be null on first
+        // sign-in before the token is fully propagated).
+        await user.reload();
+        final freshUser = FirebaseAuth.instance.currentUser;
+        username = freshUser?.displayName ??
+            user.displayName ??
+            user.email?.split('@')[0] ??
+            'Player';
+      }
       await ref.set({
         'username': username,
         'email': user.email ?? '',

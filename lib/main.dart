@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +21,25 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final authError = await AuthService.ensureAnonymousSignIn();
   if (authError != null) debugPrint('[Blaziq] Anonymous auth failed: $authError');
+
+  // Silently fix existing Google users whose username was saved as 'Player'.
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.isAnonymous) {
+      final displayName = user.displayName;
+      if (displayName != null && displayName.isNotEmpty) {
+        final ref =
+            FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final doc = await ref.get();
+        if (doc.exists) {
+          final current = (doc.data()?['username'] as String?) ?? '';
+          if (current.isEmpty || current == 'Player') {
+            await ref.update({'username': displayName});
+          }
+        }
+      }
+    }
+  } catch (_) {}
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

@@ -17,7 +17,9 @@
       "Bash(cp \"C:/Users/user/Documents/Rank_nonselected.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/\")",
       "Bash(dir \"c:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\assets\" /s /b)",
       "Bash(dart run *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(flutter build *)",
+      "Bash(flutter --version)"
     ]
   }
 }
