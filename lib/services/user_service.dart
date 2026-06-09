@@ -1,8 +1,63 @@
+import 'dart:convert';
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 class UserService {
   static final _db = FirebaseFirestore.instance;
+
+  // ── Country detection ──────────────────────────────────────────────────────
+
+  /// Calls ip-api.com to get the device's country code.
+  /// Returns the ISO 3166-1 alpha-2 code (e.g. 'US', 'CA') or empty string on failure.
+  /// ip-api.com free tier is HTTP-only; cleartext for that domain is permitted
+  /// via android/app/src/main/res/xml/network_security_config.xml.
+  static Future<String> _detectCountry() async {
+    try {
+      final response = await http
+          .get(Uri.parse('http://ip-api.com/json?fields=status,countryCode'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        if (data['status'] == 'success') {
+          return (data['countryCode'] as String?) ?? '';
+        }
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  /// Returns true if the device locale suggests the user is in Canada.
+  /// Used to avoid re-detecting users who legitimately have country='CA'.
+  static bool _localeIsCanada() {
+    try {
+      return PlatformDispatcher.instance.locale.countryCode == 'CA';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Called on app launch for existing users whose country is 'CA'.
+  /// 'CA' was hardcoded as the default before IP detection was added, so most
+  /// users with 'CA' may not actually be in Canada. Re-detects via IP and
+  /// updates Firestore if the real country differs — unless the device locale
+  /// already confirms Canada, to avoid unnecessary API calls for real Canadians.
+  static Future<void> refreshCountryIfStale(String uid) async {
+    try {
+      final ref = _db.collection('users').doc(uid);
+      final doc = await ref.get();
+      if (!doc.exists) return;
+      final country = (doc.data()?['country'] as String?) ?? '';
+      if (country != 'CA') return; // already properly detected
+      if (_localeIsCanada()) return; // locale confirms Canada — trust it
+      final detected = await _detectCountry();
+      if (detected.isNotEmpty && detected != country) {
+        await ref.update({'country': detected});
+      }
+    } catch (_) {}
+  }
 
   // ── User doc ──────────────────────────────────────────────────────────────
 
@@ -25,6 +80,7 @@ class UserService {
             user.email?.split('@')[0] ??
             'Player';
       }
+      final country = await _detectCountry();
       await ref.set({
         'username': username,
         'email': user.email ?? '',
@@ -34,7 +90,7 @@ class UserService {
         'level': 1,
         'gamesPlayed': 0,
         'bestScore': 0,
-        'country': 'CA',
+        'country': country,
         'isAnonymous': user.isAnonymous,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -164,6 +220,7 @@ class UserService {
     final doc = await ref.get();
     if (!doc.exists) {
       final username = isAnonymous ? 'Guest_${uid.substring(0, 6)}' : 'Player';
+      final country = await _detectCountry();
       await ref.set({
         'username': username,
         'email': '',
@@ -173,7 +230,7 @@ class UserService {
         'level': 1,
         'gamesPlayed': 0,
         'bestScore': 0,
-        'country': 'CA',
+        'country': country,
         'isAnonymous': isAnonymous,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -207,7 +264,7 @@ class UserService {
     if (effectiveBest > 0) {
       final username = (data['username'] as String?) ?? 'Player';
       final rawCountry = (data['country'] as String?) ?? '';
-      final country = rawCountry.isNotEmpty ? rawCountry : 'CA';
+      final country = rawCountry.isNotEmpty ? rawCountry : await _detectCountry();
       await updateLeaderboard(
         uid: uid,
         score: effectiveBest,

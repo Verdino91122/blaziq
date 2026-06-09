@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/user_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
@@ -40,6 +42,10 @@ void main() async {
       }
     }
   } catch (_) {}
+
+  // Fire-and-forget: fix country for existing users who got the old 'CA' default.
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid != null) unawaited(UserService.refreshCountryIfStale(uid));
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
