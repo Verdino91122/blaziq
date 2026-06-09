@@ -327,36 +327,22 @@ class _PodiumCard extends StatelessWidget {
           const SizedBox(height: 6),
 
           // Avatar
-          Stack(
-            alignment: Alignment.bottomCenter,
-            children: [
-              CircleAvatar(
-                radius: avatarRadius,
-                backgroundColor: accentColor,
-                backgroundImage: entry.avatarUrl.isNotEmpty
-                    ? NetworkImage(entry.avatarUrl)
-                    : null,
-                child: entry.avatarUrl.isEmpty
-                    ? Text(
-                        entry.username.isNotEmpty
-                            ? entry.username[0].toUpperCase()
-                            : '?',
-                        style: AppTheme.podiumName.copyWith(
-                          fontSize: isFirst ? 22 : 18,
-                        ),
-                      )
-                    : null,
-              ),
-              if (isFirst)
-                const Positioned(
-                  bottom: -4,
-                  child: Icon(
-                    Icons.emoji_events_rounded,
-                    color: AppTheme.blazeGold,
-                    size: 16,
-                  ),
-                ),
-            ],
+          CircleAvatar(
+            radius: avatarRadius,
+            backgroundColor: accentColor,
+            backgroundImage: entry.avatarUrl.isNotEmpty
+                ? NetworkImage(entry.avatarUrl)
+                : null,
+            child: entry.avatarUrl.isEmpty
+                ? Text(
+                    entry.username.isNotEmpty
+                        ? entry.username[0].toUpperCase()
+                        : '?',
+                    style: AppTheme.podiumName.copyWith(
+                      fontSize: isFirst ? 22 : 18,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: 8),
 

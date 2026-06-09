@@ -100,16 +100,17 @@ class _MainShellState extends State<MainShell> {
   }
 
   static const _navItems = [
-    _NavItem(Icons.person_outline, Icons.person, 'Profile'),
-    _NavItem(Icons.emoji_events_outlined, Icons.emoji_events, 'Rank'),
-    _NavItem(Icons.home_outlined, Icons.home, 'Home'),
-    _NavItem(Icons.storefront_outlined, Icons.storefront, 'Shop'),
-    _NavItem(Icons.menu, Icons.menu, 'Settings'),
+    _NavItem(Icons.person_outline, Icons.person),
+    _NavItem(Icons.emoji_events_outlined, Icons.emoji_events),
+    _NavItem(Icons.home_outlined, Icons.home),
+    _NavItem(Icons.storefront_outlined, Icons.storefront),
+    _NavItem(Icons.menu, Icons.menu),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: _BottomNav(
         currentIndex: _currentIndex,
@@ -123,8 +124,7 @@ class _MainShellState extends State<MainShell> {
 class _NavItem {
   final IconData outlineIcon;
   final IconData filledIcon;
-  final String label;
-  const _NavItem(this.outlineIcon, this.filledIcon, this.label);
+  const _NavItem(this.outlineIcon, this.filledIcon);
 }
 
 class _BottomNav extends StatelessWidget {
@@ -140,65 +140,145 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.voidBlack,
-        border: Border(top: BorderSide(color: AppTheme.divider, width: 1)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (i) {
-              final item = items[i];
-              final selected = currentIndex == i;
-              final isHome = i == 2;
-              return GestureDetector(
-                onTap: () => onTap(i),
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: 64,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (isHome)
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: selected ? AppTheme.blazeGold : AppTheme.cardSurface,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            selected ? item.filledIcon : item.outlineIcon,
-                            color: selected ? AppTheme.voidBlack : AppTheme.mutedText,
-                            size: 26,
-                          ),
-                        )
-                      else ...[
-                        Icon(
-                          selected ? item.filledIcon : item.outlineIcon,
-                          color: selected ? AppTheme.blazeGold : AppTheme.mutedText,
-                          size: 24,
+    final double bottomPad = MediaQuery.of(context).padding.bottom;
+    return SizedBox(
+      height: 80.0 + bottomPad,
+      child: CustomPaint(
+        painter: const _NavBarPainter(),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 80,
+              child: Row(
+                children: List.generate(items.length, (i) {
+                  final selected = currentIndex == i;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => onTap(i),
+                      behavior: HitTestBehavior.opaque,
+                      child: Align(
+                        alignment: const Alignment(0, -0.5),
+                        child: Icon(
+                          selected ? items[i].filledIcon : items[i].outlineIcon,
+                          color: Colors.white.withAlpha(selected ? 255 : 178),
+                          size: selected ? 28.0 : 26.0,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.label,
-                          style: AppTheme.navLabel.copyWith(
-                            color: selected ? AppTheme.blazeGold : AppTheme.mutedText,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            SizedBox(height: bottomPad),
+          ],
         ),
       ),
     );
   }
+}
+
+// Paints the nav bar background with true transparent V-notch cutouts between
+// sections, plus a gradient stroke (white → transparent) on each section's
+// top and side edges to create a "raised card" lit-edge effect.
+class _NavBarPainter extends CustomPainter {
+  static const double _notchDepth = 6.0;
+  static const double _notchHalfWidth = 8.0;
+  static const double _strokeWidth = 1.5;
+  // Background: blue-grey at top fading to transparent at bottom.
+  static const Color _bgTop = Color(0xFF7688A0);
+  static const Color _bgBottom = Color(0xFF3F4348);
+  // Stroke: white at top fading to transparent at bottom.
+  static const Color _strokeTop = Color(0xFFFFFFFF);
+  static const Color _strokeBottom = Color(0x003F4348);
+
+  const _NavBarPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double sW = size.width / 5;
+    const double nD = _notchDepth;
+    const double nHW = _notchHalfWidth;
+    final Rect full = Offset.zero & size;
+
+    // ── 1. Background gradient fill with transparent notch holes ───────────
+    canvas.saveLayer(full, Paint());
+
+    canvas.drawRect(
+      full,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [_bgTop, _bgBottom],
+        ).createShader(full),
+    );
+
+    final clearPaint = Paint()..blendMode = BlendMode.clear;
+
+    // Half-notch at the very left outer edge (top-left corner triangle)
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, 0)
+        ..lineTo(nHW, 0)
+        ..lineTo(0, nD)
+        ..close(),
+      clearPaint,
+    );
+
+    // Full V-notches at each of the 4 inner section boundaries
+    for (int i = 0; i < 4; i++) {
+      final double x = (i + 1) * sW;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x - nHW, 0)
+          ..lineTo(x, nD)
+          ..lineTo(x + nHW, 0)
+          ..close(),
+        clearPaint,
+      );
+    }
+
+    // Half-notch at the very right outer edge (top-right corner triangle)
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - nHW, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width, nD)
+        ..close(),
+      clearPaint,
+    );
+
+    canvas.restore();
+
+    // ── 2. Gradient stroke along each section's top + side edges ───────────
+    for (int i = 0; i < 5; i++) {
+      final double l = i * sW;
+
+      final path = Path()
+        ..moveTo(l, size.height)
+        ..lineTo(l, nD)
+        ..lineTo(l + nHW, 0)
+        ..lineTo(l + sW - nHW, 0)
+        ..lineTo(l + sW, nD)
+        ..lineTo(l + sW, size.height);
+
+      final shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: const [_strokeTop, _strokeBottom],
+      ).createShader(Rect.fromLTWH(l, 0, sW, size.height));
+
+      canvas.drawPath(
+        path,
+        Paint()
+          ..shader = shader
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _strokeWidth
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_NavBarPainter old) => false;
 }
