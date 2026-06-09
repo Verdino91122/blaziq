@@ -12,8 +12,8 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - Firebase Firestore (database + leaderboard + user profiles)
 - Open Trivia DB API (https://opentdb.com/api.php) for questions
 - http package for API calls (handles both mobile and web)
-- flutter_svg ^2.0.0 for SVG nav icons
-- google_fonts ^8.0.0 for New Amsterdam + Nunito fonts
+- google_fonts ^8.0.0 for Fira Sans (w400–w800; all screens)
+- auto_size_text ^3.0.0 for question card and answer buttons in solo game
 - flutter_native_splash ^2.4.1 for native splash screen (runtime dep)
 - flutter_launcher_icons ^0.14.1 for app icon generation (dev dep)
 - audioplayers ^6.0.0 for sound effects and background music
@@ -21,24 +21,58 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - State management: Provider or simple StatefulWidget — nothing heavier
 
 ## Design System
-- Background color: #1A1A2E (Arena Dark)
-- Card/surface color: #242440 (Card Surface)
-- Deep background: #0D0D1A (Void Black)
-- Gold accent: #F0B429 (Blaze Gold) — correct answers, XP, highlights, primary CTA
-- Pink accent: #E91E8C (Spark Pink) — wrong answers, toggles, live/active states
-- White text: #F5F5F5
-- Muted text: #888888
-- Corner radius: 12–16px rounded cards
-- Headings: bold, uppercase, wide letter spacing
-- Primary font: Google Font "New Amsterdam" — all headings, titles, scores, nav labels, UI labels
-- Secondary font: Google Font "Nunito" — question text and answer button text only
-- Bottom nav bar: dark background, gold sliding circle indicator for selected tab
+
+### Color Palette (light theme — implemented in AppTheme)
+| Token            | Hex       | Usage                                          |
+|------------------|-----------|------------------------------------------------|
+| cloudWhite       | #F8F9FF   | App background (all screens)                   |
+| softGrey         | #EEF0F8   | Card/surface background, pills, toggles        |
+| deepGrey         | #E2E4F0   | Borders, dividers, track backgrounds           |
+| electricBlue     | #2563EB   | Primary accent — CTA, XP, highlights, correct  |
+| skyBlue          | #DBEAFE   | Blue tint background (correct answer state)    |
+| blazeOrange      | #F97316   | Streak indicator, wrong answers, urgent timer  |
+| softOrange       | #FFEDD5   | Orange tint background (streak pill bg)        |
+| ink              | #1E1B4B   | Primary text, nav bar background               |
+| steel            | #6B7280   | Muted/secondary text, icons                    |
+
+Backward-compatible AppTheme aliases (screens may use these):
+- `arenaBlack` = cloudWhite · `cardSurface` = softGrey · `voidBlack` = ink
+- `blazeGold` = electricBlue · `sparkPink` = blazeOrange · `whiteText` = ink
+- `mutedText` = steel · `divider` = deepGrey · `headerBar` = cloudWhite
+
+Difficulty colors: easy = electricBlue · medium = #7C3AED (violet) · hard = blazeOrange
+Mode card gradient: white → #F0F4FF (light blue tint)
+Google brand colors and leaderboard avatar palette are unchanged.
+
+### Typography (Fira Sans — all screens)
+| Style token      | Size | Weight | Usage                                         |
+|------------------|------|--------|-----------------------------------------------|
+| screenTitle      | 28sp | w800   | Screen titles — LEADERBOARD, SETTINGS         |
+| storeTitle       | 28sp | w800   | Store / results headlines                     |
+| appBarTitle      | 20sp | w800   | App bar / game mode title                     |
+| subheading       | 24sp | w800   | Profile username, section headings            |
+| modeTitle        | 28sp | w800   | Mode card title — SOLO                        |
+| buttonLabel      | 16sp | w800   | CTA buttons (white text on colored bg)        |
+| sectionHeader    | 12sp | w700   | Settings section labels, result row labels    |
+| rowLabel         | 15sp | w500   | Settings row text                             |
+| bodyMuted        | 14sp | w400   | Descriptions, sub-labels                      |
+| statValue        | 14sp | w700   | Header bar coins, score pills                 |
+| caption          | 11sp | w500   | XP counter, small labels                      |
+| questionText     | 19sp | w500   | Solo game question card (AutoSizeText)        |
+| answerText       | 15sp | w600   | Solo game answer buttons (AutoSizeText)       |
+| timerText        | 28sp | w800   | Circular countdown number (ink color)         |
+| streakText       | 15sp | w700   | Streak pill (blazeOrange)                     |
+| difficultyBadge  | 13sp | w700   | Difficulty pill label                         |
+
+Corner radius: 12–16px rounded cards (16px question card, 14–16px buttons, 20px mode cards)
+Status bar icons: dark (Brightness.dark) — app has light background
+Navigation bar: ink (#1E1B4B) background, electricBlue active icon/circle
 
 ## Brand Identity
 - App name: Blaziq
 - Logo mark: lightning bolt with IQ dot accent
 - Tagline: TRIVIA · BATTLE · WIN
-- Tone: competitive sport, not classroom — fast, intense, premium dark theme
+- Tone: competitive sport, not classroom — fast, clean, light premium theme
 
 ## Design References
 All screen mockups are in the /designs folder:
@@ -49,43 +83,52 @@ All screen mockups are in the /designs folder:
 - designs/menu_screen.png — Settings/menu screen
 
 Always refer to these images when building or modifying each screen.
+Note: the /designs images reflect the original dark-theme mockups; the live app now uses the light theme described above.
 
 ## App Structure
 5 bottom navigation tabs (left to right):
 1. Profile
 2. Rank
-3. Home (default, center tab, slightly larger icon when selected)
+3. Home (default, center tab — larger circle button when selected)
 4. Shop
 5. Settings
 
-Bottom nav bar: 77px height, SVG icons, sliding gold circle behind selected tab.
-Selected tab: icon only (no label). Unselected: icon + label below.
+Bottom nav bar: ink (#1E1B4B) background, 64px height, Material icons.
+Selected home tab: electricBlue filled circle, ink icon inside.
+Selected non-home tab: electricBlue icon + label. Unselected: steel icon + label.
 
 ## Screen Details
 
-### Home Screen (designs/home_screen.png)
-- Header bar: user avatar (circle, top left), coins count with star icon,
+### Home Screen
+- Header bar: user avatar (circle, top left, electricBlue border), coins count with star icon,
   XP progress bar with level number and title — all live from Firestore
 - Center: Blaziq logo (assets/images/inapp_logo.png, 80×80) + "SELECT A MODE" text
 - Developer cheat mode: activated by tapping the logo 7 times within 3 seconds;
   counter resets if no tap within 3 seconds; DEV MODE label appears below SELECT A MODE
-- Swipeable horizontal carousel with 3 mode cards:
+- Swipeable horizontal carousel with 3 mode cards (gradient: white → #F0F4FF):
   1. Solo — play alone vs the clock (fully functional)
-  2. Play with Friend — diagonal "COMING SOON" ribbon, non-tappable
-  3. Play Online — diagonal "COMING SOON" ribbon, non-tappable
+  2. Play with Friend — diagonal blazeOrange "COMING SOON" ribbon, non-tappable
+  3. Play Online — diagonal blazeOrange "COMING SOON" ribbon, non-tappable
 - Each card has icon, title, short description, centered content
+- Grid texture overlay on mode cards: subtle deepGrey lines
 
 ### Solo Mode Game Screen (not in nav bar)
+- Background: cloudWhite full screen
+- Top bar: white background, X quit button left, difficulty pill center
+  (small colored dot + difficulty label in ink, softGrey pill bg), score right
+  (softGrey pill, orange star icon + blazeOrange score text). No elevation.
 - Endless time-based mode — no fixed question limit
-- Timer starts at 30 seconds, displayed as circular countdown (90×90px)
-- Pre-game countdown overlay: 3, 2, 1, GO! before game starts
-  - Shows a muted 'CANCEL' button below the number (hidden on GO!)
+- Timer: 90×90px circular arc inside a 110×110px white card with soft shadow.
+  Track color: deepGrey. Arc color: electricBlue (normal), blazeOrange (≤8s).
+  Center number: ink color, Fira Sans w800.
+- Pre-game countdown overlay: 3, 2, 1, GO! on cloudWhite background
+  - Shows a muted steel 'CANCEL' button below the number (hidden on GO!)
   - Tapping CANCEL returns to home screen immediately
   - Android back button is blocked during countdown (PopScope canPop: false)
-- Quit button: X icon (top left) — tapping shows a confirmation dialog;
+- Quit button: X icon top left — tapping shows a confirmation dialog;
   timer keeps running while dialog is open (do NOT pause it);
   dialog: 'Quit Game?' / 'Your progress will be lost' /
-  gold 'Keep Playing' button (dismisses) + muted 'Quit' button (navigates back)
+  electricBlue 'Keep Playing' button + steel muted 'Quit' button
 - Android back button during game: triggers the same quit confirmation dialog
 - Correct answer time bonus (streak resets to 0 on wrong answer):
   - Streak 1–2: +4s
@@ -94,10 +137,22 @@ Selected tab: icon only (no label). Unselected: icon + label below.
   - Streak 5+: +10s
 - Wrong answer: -3s, streak resets to 0 (next correct is back to +4s)
 - Difficulty escalation: Easy → Medium (5 correct) → Hard (10 correct)
-- Floating feedback animation: '+4s', '+6s', '+8s', '+10s', or '-3s' flies up to timer on answer
-- Timer bump animation when floating text arrives at timer
-- Streak indicator floats using Stack/Positioned, centered between timer and question card
-- Scoring formula at game end (see Scoring & Rewards System section for full detail):
+- Floating feedback: '+4s'/'+6s'/'+8s'/'+10s' in electricBlue, '-3s' in blazeOrange.
+  Text flies upward with scale pop + fade, then timer bumps (scale + color flash).
+- Streak indicator: softOrange pill, blazeOrange text "🔥 x3", Fira Sans 15sp w700.
+  Floats as Stack/Positioned overlay between timer and question card.
+  Bouncing animation: TweenSequence scales 1.0 → 1.15 → 1.0 every 1.25s.
+  Appears at streak 2+; disappears on wrong answer.
+- Question card: white background, border-radius 16px, soft shadow.
+  Expanded (fills remaining vertical space). AutoSizeText, 13–19sp, max 5 lines.
+- Answer buttons: 2×2 GridView.count, asymmetric corner radii per position:
+  - Top-left: topLeft=16px   Top-right: topRight=16px
+  - Bottom-left: bottomLeft=16px   Bottom-right: bottomRight=16px
+  Idle: white bg, deepGrey border. Correct: skyBlue bg, electricBlue border/text.
+  Wrong: softOrange bg, blazeOrange border/text.
+  Tap animation: AnimatedScale 0.97 on press, 120ms ease.
+  AutoSizeText, 11–15sp, max 2 lines.
+- Scoring formula at game end:
   - base_points = correct_answers × 100
   - streak_bonus = highest_streak × 50
   - time_bonus = remaining_seconds × 10
@@ -105,11 +160,10 @@ Selected tab: icon only (no label). Unselected: icon + label below.
 - Results screen: headline based on performance, final score, correct count,
   highest streak, accuracy %, score/coins/XP earned with count-up animations,
   XP progress bar, LEVEL UP! badge if threshold crossed
-- API: fetches 50 questions per batch; auto-retry once after 5s on HTTP 429
+- API: fetches 50 questions per batch; auto-prefetch when <3 remain; auto-retry once
+  after 5s on HTTP 429
 - Use kIsWeb with corsproxy.io prefix for web builds
 - Always decode HTML entities in questions and answers
-- Question text: Nunito font (AppTheme.questionText)
-- Answer button text: Nunito font (AppTheme.answerText)
 
 #### Sound effects (SoundService)
 - Background music starts when countdown ends, loops at volume 0.4
@@ -129,53 +183,54 @@ Selected tab: icon only (no label). Unselected: icon + label below.
 - _hapticsEnabled cached at game start — checked synchronously (no async delay)
 - Requires VIBRATE permission in AndroidManifest.xml
 
-### Profile Screen (designs/profile_screen.png)
+### Profile Screen
+- Background: cloudWhite (flat, no gradient)
 - The app always has a signed-in user (anonymous or Google) — a pure signed-out
   state never appears
 - If anonymous (guest):
-  - Gold "SAVE YOUR PROGRESS" banner at top (lock icon + subtitle)
-  - Guest avatar (person icon, muted ring)
+  - electricBlue "SAVE YOUR PROGRESS" banner at top (lock icon + subtitle)
+  - Guest avatar (person icon, steel muted ring)
   - Guest_XXXXXX username + "Guest account" subtitle read from Firestore
   - Stats grid: games played, best score, coins, XP level — live from Firestore
-  - Google Sign-In button (styled, not plain default)
+  - Google Sign-In button (white bg + deepGrey border — visible on light theme)
   - "Reward: +200 coins for linking!" note
 - If signed in with Google:
-  - Google profile photo avatar (gold ring), username, email — live from Firestore
+  - Google profile photo avatar (electricBlue ring), username, email — live from Firestore
   - Stats grid: games played, best score, coins, XP level
-  - Sign out button — shows confirmation dialog before signing out; on confirm,
-    signs out and immediately re-enters anonymous auth
+  - Sign out button (blazeOrange tint) — shows confirmation dialog before signing out;
+    on confirm, signs out and immediately re-enters anonymous auth
 
-### Rank Screen (designs/rank_screen.png)
+### Rank Screen
+- Background: cloudWhite
 - Title: "LEADERBOARD"
-- 3 filter tabs: Worldwide | Canada | Friends
+- 3 filter tabs: Worldwide | Canada | Friends (softGrey pill container, electricBlue active)
 - Worldwide: all players ordered by score desc (live from Firestore leaderboard collection)
 - Canada: client-side filter where country == 'CA'; shows empty state if none
 - Friends: "Coming Soon" placeholder
 - Top 3 as podium: 2nd left, 1st center (taller card), 3rd right
   If fewer than 3 players exist, render only those that exist (no empty slots)
-  Each podium card shows: avatar (NetworkImage if avatarUrl set, else initials), name, score, rank badge
-- Players 4th+ as scrollable list below
-  Each row: rank number, avatar, username, score
-- Current user's row highlighted: gold border + subtle gold background tint (both podium and list)
+  Each podium card: avatar (NetworkImage if avatarUrl set, else initials), name, score, rank badge
+- Players 4th+ as scrollable list below; each row: rank, avatar, username, score
+- Current user's row highlighted: electricBlue border + subtle tint (both podium and list)
 - leaderboard collection updated by saveGameResult() using effectiveBest = max(score, currentBest)
-  so existing users are seeded immediately even if current game doesn't beat their personal best
 - When online mode is added later, leaderboard will switch to online ratings
 
 ### Store Screen
+- Background: cloudWhite
 - Title: "SHOP"
-- Dark navy background (#1A1A2E)
-- Header shows current coin balance (live from Firestore via userStream)
-- Center: inapp_logo.png + "COMING SOON" in blazeGold + muted subtitle
+- Header: softGrey coin balance pill (star icon + amount), live from Firestore via userStream
+- Center: inapp_logo.png + "COMING SOON" in electricBlue + muted subtitle
 - Bundle cards and purchase buttons removed — placeholder until Phase 9
 
-### Menu/Settings Screen (designs/menu_screen.png)
+### Menu/Settings Screen
+- Background: cloudWhite
 - Title: "SETTINGS"
 - Section AUDIO & HAPTICS:
   - Sound Effects toggle — persisted via shared_preferences (sounds_enabled)
   - Background Music toggle — persisted via shared_preferences (music_enabled)
   - Haptics toggle — persisted via shared_preferences (haptics_enabled)
   - All toggles load saved state on screen init; default true
-  - Active thumb/track color: AppTheme.blazeGold
+  - Toggle colors driven by SwitchThemeData in AppTheme.theme (electricBlue active)
 - Section NOTIFICATIONS:
   - Push Notifications toggle (UI only, not yet wired)
   - In-App Notifications toggle (UI only, not yet wired)
@@ -204,7 +259,7 @@ Collection: users
     - level: number (default 1)
     - gamesPlayed: number
     - bestScore: number (solo mode best score)
-    - country: string (default 'CA' — will be locale-detected in a future phase)
+    - country: string (ISO 3166-1 alpha-2, detected via ip-api.com on first write)
     - lastPlayedDate: string (yyyy-MM-dd, for daily bonus)
     - createdAt: timestamp
 
@@ -212,9 +267,17 @@ Collection: leaderboard
   Document: {uid}
     - username: string
     - score: number (solo best score for now, online rating later)
-    - country: string (default 'CA')
+    - country: string (ISO 3166-1 alpha-2)
     - avatarUrl: string
     - updatedAt: timestamp
+
+## Country Detection
+- Country is detected via `http://ip-api.com/json?fields=status,countryCode` on first doc creation
+- Android allows cleartext HTTP to ip-api.com via `android/app/src/main/res/xml/network_security_config.xml`
+- `refreshCountryIfStale(uid)` is called fire-and-forget on app launch:
+  if country == 'CA' AND device locale is not Canada, re-detects and updates Firestore
+  (handles legacy users who got the old hardcoded 'CA' default)
+- Fall back to empty string if detection fails; do not block app launch
 
 ## Scoring & Rewards System
 
@@ -277,11 +340,12 @@ This is the most complex feature — build after friend and online modes are com
 - Always handle loading states and errors gracefully
 - Always decode HTML entities from Open Trivia DB API responses
 - Never hardcode user data — always check auth state first
-- Always use AppTheme for colors and text styles — never hardcode
+- Always use AppTheme for colors and text styles — never hardcode colors
 - Dispose all AnimationControllers and Timers in dispose()
 - Use if statements not Visibility widgets for conditional rendering
 - Streak indicator and floating feedback must use Stack/Positioned
 - Haptic calls must be synchronous — cache preference, never call async inside timer ticks
+- Answer grid uses GridView.count with asymmetric BorderRadius.only(...) per cell position
 
 ## Flutter Code Standards
 - Always use const constructors wherever possible
@@ -295,9 +359,9 @@ This is the most complex feature — build after friend and online modes are com
 
 ## Folder Structure (lib/)
 lib/
-├── main.dart               ← app entry + MainShell + _BottomNav (SVG, sliding circle)
+├── main.dart               ← app entry + MainShell + _BottomNav
 ├── theme/
-│   └── app_theme.dart
+│   └── app_theme.dart      ← all colors, text styles, ThemeData (light theme)
 ├── screens/
 │   ├── home_screen.dart
 │   ├── profile_screen.dart
@@ -306,10 +370,10 @@ lib/
 │   ├── menu_screen.dart
 │   └── solo_game_screen.dart
 └── services/
-    ├── auth_service.dart
-    ├── user_service.dart
-    ├── sound_service.dart      ← audioplayers wrapper; SFX + background music
-    └── preferences_service.dart ← shared_preferences wrapper; sounds/music/haptics
+    ├── auth_service.dart         ← anonymous sign-in, Google Sign-In, account linking
+    ├── user_service.dart         ← Firestore CRUD, level/XP math, country detection
+    ├── sound_service.dart        ← audioplayers wrapper; SFX + background music
+    └── preferences_service.dart  ← shared_preferences wrapper; sounds/music/haptics
 
 ## Project Status
 
@@ -318,7 +382,7 @@ lib/
 - Phase 1: App shell — navigation bar and all 5 screen layouts
 - Phase 2: Solo game mode (Open Trivia DB API + game logic) — COMPLETE
   - ✅ Question fetching with HTML entity decoding
-  - ✅ Endless time-based gameplay
+  - ✅ Endless time-based gameplay with auto-prefetch (<3 questions remaining)
   - ✅ Circular countdown timer with pulse animation
   - ✅ Pre-game countdown overlay (3, 2, 1, GO!)
   - ✅ Difficulty escalation (Easy → Medium at 5 correct → Hard at 10 correct)
@@ -337,15 +401,13 @@ lib/
   - ✅ Three-currency scoring system: score, XP (with level-up), coins (with daily bonus)
   - ✅ Home header bar: avatar + coins + XP bar, live from Firestore
   - ✅ Results screen saves to Firestore after every game
-  - ✅ Font: New Amsterdam (google_fonts ^8.0.0)
-  - ✅ Bottom nav bar: SVG icons, 77px, sliding gold circle, selected = icon only
+  - ✅ Bottom nav bar: Material icons, 64px, ink background, electricBlue selected state
 - Phase 4: Solo Leaderboard — COMPLETE
   - ✅ leaderboard Firestore collection — written by saveGameResult() after every game
   - ✅ effectiveBest = max(score, currentBest) seeds existing users immediately
   - ✅ leaderboardStream() — live ordered query powering Rank screen
   - ✅ Rank screen: podium (top 3) + scrollable list (4th+), current user highlighted
   - ✅ Worldwide / Canada / Friends tabs
-  - ✅ country defaults to 'CA'; existing users seeded on next game
   - ✅ Pre-game countdown: CANCEL button + Android back button blocked (PopScope)
   - ✅ Android back button during game: triggers quit confirmation dialog
   - ✅ OpenTDB HTTP 429 auto-retry after 5s
@@ -354,17 +416,26 @@ lib/
   - ✅ flutter_native_splash: #1A1A2E background, Android 12 uses launcher icon
   - ✅ Splash preserved until Firebase + anonymous auth ready, then removed
   - ✅ Home screen logo: assets/images/inapp_logo.png (80×80)
-- Phase 5: Polish — IN PROGRESS
+- Phase 5: Polish — COMPLETE
   - ✅ Sound effects + background music (audioplayers ^6.0.0, SoundService)
   - ✅ Haptics via HapticFeedback (no package); VIBRATE permission added
-  - ✅ Settings screen wired: audio/haptic toggles persist via shared_preferences
+  - ✅ Settings screen: audio/haptic toggles persist via shared_preferences
   - ✅ Settings → Edit Profile navigates to Profile tab
   - ✅ Settings → Sign Out: confirmation dialog for Google users; SnackBar for guests
   - ✅ Settings → support rows show "Coming Soon" SnackBar
   - ✅ Store screen replaced with Coming Soon placeholder (live coin balance kept)
-  - ✅ Nunito font for question text and answer button text
-  - ✅ Dev cheat mode: 7 rapid taps on logo (was invisible tap zone)
-  - ✅ Game layout: timer 90×90px, streak indicator repositioned between timer and question card
+  - ✅ Developer cheat mode: 7 rapid taps on logo activates 5 in-game cheat buttons
+  - ✅ Google Sign-In username fix: displayName captured before credential creation,
+       _ensureDisplayName() writes it back after signInWithCredential (prevents 'Player' bug)
+  - ✅ Country detection: ip-api.com IP lookup on doc creation, Android cleartext config,
+       refreshCountryIfStale() on launch fixes legacy 'CA' default for non-Canadian users
+  - ✅ Full light theme redesign — app-wide:
+       New palette (cloudWhite/electricBlue/blazeOrange/ink/steel — see Design System)
+       All fonts → Fira Sans w400–w800 (replaced New Amsterdam + Nunito)
+       auto_size_text ^3.0.0 for question card + answer buttons
+       Solo game: white top bar, timer white card, orange streak bounce pill,
+       AutoSizeText question card, 2×2 answer grid with asymmetric corner radii + scale press
+       All screens: light backgrounds, profile gradient removed, status bar dark icons
 
 ### Next
 - Phase 5: Google Play Store submission
@@ -377,5 +448,5 @@ lib/
 - Phase 10: Final polish, App Store (iOS) submission
 
 Privacy link: https://doc-hosting.flycricket.io/blaziq-privacy-policy/11284ce3-7a2f-4a89-9d8b-33129af162b5/privacy
-Terms of use links: https://doc-hosting.flycricket.io/blaziq-terms-of-use/7bd62b5d-fd5d-412d-992c-5b4105c59595/terms
-Form for account deletion in case asked by user: https://docs.google.com/forms/d/e/1FAIpQLScGVXJ20ZXmBww-w7RjyhLkG_Cl8OaZJINS1In8Wq0AkwU26g/viewform?usp=header
+Terms of use link: https://doc-hosting.flycricket.io/blaziq-terms-of-use/7bd62b5d-fd5d-412d-992c-5b4105c59595/terms
+Account deletion form: https://docs.google.com/forms/d/e/1FAIpQLScGVXJ20ZXmBww-w7RjyhLkG_Cl8OaZJINS1In8Wq0AkwU26g/viewform?usp=header

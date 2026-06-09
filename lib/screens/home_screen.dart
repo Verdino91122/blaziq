@@ -438,7 +438,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withAlpha(8)
+      ..color = AppTheme.deepGrey.withAlpha(120)
       ..strokeWidth = 0.5;
     const step = 24.0;
     for (double x = 0; x < size.width; x += step) {

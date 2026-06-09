@@ -23,7 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppTheme.cardSurface,
-          content: Text('Sign-in cancelled or failed.', style: AppTheme.snackText),
+          content: Text(
+            'Sign-in cancelled or failed.',
+            style: AppTheme.snackText,
+          ),
         ),
       );
     }
@@ -41,21 +44,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, snapshot) {
         final user = snapshot.data;
         return Scaffold(
-          body: Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppTheme.voidBlack, AppTheme.arenaBlack, AppTheme.headerBar],
-                stops: [0.0, 0.5, 1.0],
-              ),
-            ),
-            child: SafeArea(
-              child: user == null || user.isAnonymous
-                  ? _AnonView(user: user, loading: _loading, onSignIn: _handleSignIn)
-                  : _SignedInView(user: user, onSignOut: _handleSignOut),
-            ),
+          backgroundColor: AppTheme.cloudWhite,
+          body: SafeArea(
+            child: user == null || user.isAnonymous
+                ? _AnonView(
+                    user: user,
+                    loading: _loading,
+                    onSignIn: _handleSignIn,
+                  )
+                : _SignedInView(user: user, onSignOut: _handleSignOut),
           ),
         );
       },
@@ -95,8 +92,11 @@ class _AnonView extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.lock_outline_rounded,
-                    color: AppTheme.blazeGold, size: 20),
+                const Icon(
+                  Icons.lock_outline_rounded,
+                  color: AppTheme.blazeGold,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -132,7 +132,9 @@ class _AnonView extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  color: AppTheme.mutedText.withAlpha(80), width: 2),
+                color: AppTheme.mutedText.withAlpha(80),
+                width: 2,
+              ),
             ),
             child: const CircleAvatar(
               radius: 45,
@@ -151,13 +153,16 @@ class _AnonView extends StatelessWidget {
                 final data = snap.data?.data();
                 // Fall back to UID-derived name when doc doesn't exist yet
                 // (new anonymous user who hasn't completed a game).
-                final username = (data?['username'] as String?)
-                    ?? 'Guest_${user!.uid.substring(0, 6)}';
+                final username =
+                    (data?['username'] as String?) ??
+                    'Guest_${user!.uid.substring(0, 6)}';
                 return Column(
                   children: [
-                    Text(username,
-                        style: AppTheme.subheading,
-                        textAlign: TextAlign.center),
+                    Text(
+                      username,
+                      style: AppTheme.subheading,
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 4),
                     Text('Guest account', style: AppTheme.bodyMuted),
                     const SizedBox(height: 24),
@@ -180,7 +185,10 @@ class _AnonView extends StatelessWidget {
               child: Text(
                 'Anonymous sign-in failed.\nGo to Firebase Console → Authentication → Sign-in method → Anonymous → Enable it.',
                 style: AppTheme.caption.copyWith(
-                    color: AppTheme.sparkPink, fontSize: 11, height: 1.5),
+                  color: AppTheme.sparkPink,
+                  fontSize: 11,
+                  height: 1.5,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -197,7 +205,9 @@ class _AnonView extends StatelessWidget {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppTheme.googleButtonText),
+                      strokeWidth: 2,
+                      color: AppTheme.googleButtonText,
+                    ),
                   )
                 : const _GoogleIcon(),
             label: loading ? 'Signing in…' : 'Sign in with Google',
@@ -217,11 +227,16 @@ class _AnonView extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_rounded,
-                    color: AppTheme.blazeGold, size: 20),
+                const Icon(
+                  Icons.star_rounded,
+                  color: AppTheme.blazeGold,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
-                Text('Reward: +200 coins for linking!',
-                    style: AppTheme.rewardText),
+                Text(
+                  'Reward: +200 coins for linking!',
+                  style: AppTheme.rewardText,
+                ),
               ],
             ),
           ),
@@ -247,9 +262,11 @@ class _SignedInView extends StatelessWidget {
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.cardSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Sign Out?',
-            style: AppTheme.subheading.copyWith(fontSize: 22),
-            textAlign: TextAlign.center),
+        title: Text(
+          'Sign Out?',
+          style: AppTheme.subheading.copyWith(fontSize: 22),
+          textAlign: TextAlign.center,
+        ),
         content: Text(
           'Progress earned while signed out won\'t be saved to your account.',
           style: AppTheme.bodyMuted,
@@ -270,10 +287,13 @@ class _SignedInView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.mutedText.withAlpha(80)),
                   ),
-                  child: Text('Cancel',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.buttonLabel.copyWith(
-                          color: AppTheme.mutedText)),
+                  child: Text(
+                    'Cancel',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.buttonLabel.copyWith(
+                      color: AppTheme.mutedText,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -287,13 +307,15 @@ class _SignedInView extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.sparkPink.withAlpha(30),
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: AppTheme.sparkPink.withAlpha(80)),
+                    border: Border.all(color: AppTheme.sparkPink.withAlpha(80)),
                   ),
-                  child: Text('Sign Out',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.buttonLabel.copyWith(
-                          color: AppTheme.sparkPink)),
+                  child: Text(
+                    'Sign Out',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.buttonLabel.copyWith(
+                      color: AppTheme.sparkPink,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -334,14 +356,14 @@ class _SignedInView extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.sparkPink.withAlpha(30),
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: AppTheme.sparkPink.withAlpha(80)),
+                    border: Border.all(color: AppTheme.sparkPink.withAlpha(80)),
                   ),
                   child: Text(
                     'SIGN OUT',
                     textAlign: TextAlign.center,
-                    style:
-                        AppTheme.buttonLabel.copyWith(color: AppTheme.sparkPink),
+                    style: AppTheme.buttonLabel.copyWith(
+                      color: AppTheme.sparkPink,
+                    ),
                   ),
                 ),
               ),
@@ -394,12 +416,17 @@ class _StatsGrid extends StatelessWidget {
 
     final stats = [
       _StatEntry(
-          icon: Icons.sports_esports_rounded, label: 'GAMES', value: '$games'),
-      _StatEntry(
-          icon: Icons.star_rounded, label: 'BEST SCORE', value: '$best'),
+        icon: Icons.sports_esports_rounded,
+        label: 'GAMES',
+        value: '$games',
+      ),
+      _StatEntry(icon: Icons.star_rounded, label: 'BEST SCORE', value: '$best'),
       _StatEntry(icon: Icons.toll_rounded, label: 'COINS', value: '$coins'),
       _StatEntry(
-          icon: Icons.flash_on_rounded, label: 'LEVEL $level', value: '${xp}xp'),
+        icon: Icons.flash_on_rounded,
+        label: 'LEVEL $level',
+        value: '${xp}xp',
+      ),
     ];
 
     return GridView.count(
@@ -418,8 +445,11 @@ class _StatEntry {
   final IconData icon;
   final String label;
   final String value;
-  const _StatEntry(
-      {required this.icon, required this.label, required this.value});
+  const _StatEntry({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 }
 
 class _StatCard extends StatelessWidget {
@@ -444,12 +474,16 @@ class _StatCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(entry.value,
-                    style: AppTheme.statValue.copyWith(fontSize: 17),
-                    overflow: TextOverflow.ellipsis),
-                Text(entry.label,
-                    style: AppTheme.caption.copyWith(letterSpacing: 0.8),
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  entry.value,
+                  style: AppTheme.statValue.copyWith(fontSize: 17),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  entry.label,
+                  style: AppTheme.caption.copyWith(letterSpacing: 0.8),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -484,9 +518,11 @@ class _SignInButton extends StatelessWidget {
         width: double.infinity,
         height: 52,
         decoration: BoxDecoration(
-          color:
-              onTap == null ? backgroundColor.withAlpha(180) : backgroundColor,
+          color: onTap == null
+              ? backgroundColor.withAlpha(180)
+              : backgroundColor,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.deepGrey, width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -552,4 +588,3 @@ class _GoogleIconPainter extends CustomPainter {
   @override
   bool shouldRepaint(_GoogleIconPainter old) => false;
 }
-

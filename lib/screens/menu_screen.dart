@@ -265,8 +265,6 @@ class _ToggleRow extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: AppTheme.blazeGold,
-            activeTrackColor: AppTheme.blazeGold.withAlpha(120),
           ),
         ],
       ),
