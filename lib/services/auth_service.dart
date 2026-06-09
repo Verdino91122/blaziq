@@ -21,12 +21,8 @@ class AuthService {
       if (_auth.currentUser == null) {
         return 'Auth succeeded but currentUser is null';
       }
-      // Firestore doc is NOT created here — it is created lazily in
-      // saveGameResult() only when the user actually completes a game.
       return null;
     } on FirebaseAuthException catch (e) {
-      // Most common cause: Anonymous sign-in not enabled in Firebase Console →
-      // Authentication → Sign-in method → Anonymous → Enable.
       return 'FirebaseAuth error: ${e.code} — ${e.message}';
     } catch (e) {
       return 'Unexpected error: $e';
@@ -48,8 +44,9 @@ class AuthService {
         if (isAnon) {
           try {
             final cred = await anonUser!.linkWithPopup(provider);
-            await UserService.upgradeToGoogle(cred.user!);
-            await _patchUsernameIfNeeded(cred.user!);
+            await _ensureDisplayName(cred.user!, null);
+            await UserService.upgradeToGoogle(FirebaseAuth.instance.currentUser ?? cred.user!);
+            await _patchUsernameIfNeeded(FirebaseAuth.instance.currentUser ?? cred.user!);
             return cred;
           } on FirebaseAuthException catch (e) {
             if ((e.code == 'credential-already-in-use' ||
@@ -58,29 +55,50 @@ class AuthService {
               final cred = await _migrateAndSignIn(
                 anonUid: anonUser!.uid,
                 credential: e.credential!,
+                googleDisplayName: null,
               );
-              if (cred?.user != null) await _patchUsernameIfNeeded(cred!.user!);
+              if (cred?.user != null) {
+                await _patchUsernameIfNeeded(
+                    FirebaseAuth.instance.currentUser ?? cred!.user!);
+              }
               return cred;
             }
             return null;
           }
         }
         final cred = await _auth.signInWithPopup(provider);
-        if (cred.user != null) await _patchUsernameIfNeeded(cred.user!);
+        if (cred.user != null) {
+          // Web popup may carry display name in additionalUserInfo
+          final nameFromProfile =
+              cred.additionalUserInfo?.profile?['name'] as String?;
+          await _ensureDisplayName(cred.user!, nameFromProfile);
+          await _patchUsernameIfNeeded(
+              FirebaseAuth.instance.currentUser ?? cred.user!);
+        }
         return cred;
       } else {
         final googleUser = await GoogleSignIn().signIn();
         if (googleUser == null) return null;
+
+        // Capture displayName from the Google SDK object NOW — it becomes
+        // null on the Firebase User after signInWithCredential on the
+        // migration path (credential-already-in-use fallback).
+        final googleDisplayName = googleUser.displayName;
+
         final googleAuth = await googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
+
         if (isAnon) {
           try {
             final cred = await anonUser!.linkWithCredential(credential);
-            await UserService.upgradeToGoogle(cred.user!);
-            await _patchUsernameIfNeeded(cred.user!);
+            await _ensureDisplayName(cred.user!, googleDisplayName);
+            await UserService.upgradeToGoogle(
+                FirebaseAuth.instance.currentUser ?? cred.user!);
+            await _patchUsernameIfNeeded(
+                FirebaseAuth.instance.currentUser ?? cred.user!);
             return cred;
           } on FirebaseAuthException catch (e) {
             if ((e.code == 'credential-already-in-use' ||
@@ -89,15 +107,24 @@ class AuthService {
               final cred = await _migrateAndSignIn(
                 anonUid: anonUser!.uid,
                 credential: e.credential!,
+                googleDisplayName: googleDisplayName,
               );
-              if (cred?.user != null) await _patchUsernameIfNeeded(cred!.user!);
+              if (cred?.user != null) {
+                await _patchUsernameIfNeeded(
+                    FirebaseAuth.instance.currentUser ?? cred!.user!);
+              }
               return cred;
             }
             return null;
           }
         }
+
         final cred = await _auth.signInWithCredential(credential);
-        if (cred.user != null) await _patchUsernameIfNeeded(cred.user!);
+        if (cred.user != null) {
+          await _ensureDisplayName(cred.user!, googleDisplayName);
+          await _patchUsernameIfNeeded(
+              FirebaseAuth.instance.currentUser ?? cred.user!);
+        }
         return cred;
       }
     } catch (_) {
@@ -110,11 +137,18 @@ class AuthService {
   static Future<UserCredential?> _migrateAndSignIn({
     required String anonUid,
     required AuthCredential credential,
+    required String? googleDisplayName,
   }) async {
     final anonData = await UserService.getUserData(anonUid);
     final cred = await _auth.signInWithCredential(credential);
     if (cred.user == null) return null;
-    await UserService.ensureUserDoc(cred.user!);
+
+    // Firebase doesn't populate displayName after signInWithCredential on the
+    // migration path. Force it from the Google SDK value captured before sign-in.
+    await _ensureDisplayName(cred.user!, googleDisplayName);
+
+    await UserService.ensureUserDoc(
+        FirebaseAuth.instance.currentUser ?? cred.user!);
     if (anonData != null) {
       await UserService.mergeAnonData(
         googleUid: cred.user!.uid,
@@ -125,11 +159,24 @@ class AuthService {
     return cred;
   }
 
+  /// Writes [fallbackName] to the Firebase user profile when displayName is
+  /// missing, then reloads so subsequent reads see the correct value.
+  static Future<void> _ensureDisplayName(
+      User user, String? fallbackName) async {
+    final current = FirebaseAuth.instance.currentUser;
+    final hasName = (current?.displayName ?? user.displayName ?? '').isNotEmpty;
+    if (!hasName && fallbackName != null && fallbackName.isNotEmpty) {
+      await (current ?? user).updateDisplayName(fallbackName);
+      await FirebaseAuth.instance.currentUser?.reload();
+    }
+  }
+
   /// If the Firestore username is 'Player' or blank, overwrites it with
   /// the real Google display name. Called after every successful Google sign-in.
   static Future<void> _patchUsernameIfNeeded(User user) async {
     if (user.isAnonymous) return;
-    final displayName = FirebaseAuth.instance.currentUser?.displayName;
+    final displayName =
+        FirebaseAuth.instance.currentUser?.displayName ?? user.displayName;
     if (displayName == null || displayName.isEmpty) return;
     final ref =
         FirebaseFirestore.instance.collection('users').doc(user.uid);

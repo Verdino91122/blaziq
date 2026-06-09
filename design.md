@@ -25,7 +25,7 @@
 
 ### Usage Rules
 
-- Never use a white or light background anywhere — the app is 100% dark-themed.
+- Never use a white or light background anywhere (unless asked to).
 - Blaze Gold is the hero accent — use it for anything the user should tap or focus on first.
 - Spark Pink signals urgency or error — wrong answers, danger states, timer urgency.
 - Card Surface (#242440) always sits on top of Arena Dark (#1A1A2E) — never reverse these.
