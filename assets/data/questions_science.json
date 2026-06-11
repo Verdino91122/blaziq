@@ -1,0 +1,705 @@
+{
+  "category": "science",
+  "questions": [
+    {
+      "id": "sci_001",
+      "difficulty": "easy",
+      "question": "What is the chemical symbol for water?",
+      "correct_answer": "H2O",
+      "incorrect_answers": ["HO2", "H3O", "O2H"]
+    },
+    {
+      "id": "sci_002",
+      "difficulty": "easy",
+      "question": "How many planets are in our solar system?",
+      "correct_answer": "8",
+      "incorrect_answers": ["7", "9", "10"]
+    },
+    {
+      "id": "sci_003",
+      "difficulty": "easy",
+      "question": "What gas do humans breathe in to survive?",
+      "correct_answer": "Oxygen",
+      "incorrect_answers": ["Carbon dioxide", "Nitrogen", "Hydrogen"]
+    },
+    {
+      "id": "sci_004",
+      "difficulty": "easy",
+      "question": "Which is the closest star to Earth?",
+      "correct_answer": "The Sun",
+      "incorrect_answers": ["Proxima Centauri", "Sirius", "Betelgeuse"]
+    },
+    {
+      "id": "sci_005",
+      "difficulty": "easy",
+      "question": "What force pulls objects toward the Earth?",
+      "correct_answer": "Gravity",
+      "incorrect_answers": ["Magnetism", "Friction", "Tension"]
+    },
+    {
+      "id": "sci_006",
+      "difficulty": "easy",
+      "question": "What is the center of an atom called?",
+      "correct_answer": "Nucleus",
+      "incorrect_answers": ["Electron", "Proton", "Core"]
+    },
+    {
+      "id": "sci_007",
+      "difficulty": "easy",
+      "question": "Which planet is the largest in our solar system?",
+      "correct_answer": "Jupiter",
+      "incorrect_answers": ["Saturn", "Uranus", "Neptune"]
+    },
+    {
+      "id": "sci_008",
+      "difficulty": "easy",
+      "question": "What type of animal is a whale?",
+      "correct_answer": "Mammal",
+      "incorrect_answers": ["Fish", "Reptile", "Amphibian"]
+    },
+    {
+      "id": "sci_009",
+      "difficulty": "easy",
+      "question": "How many legs does a spider have?",
+      "correct_answer": "8",
+      "incorrect_answers": ["6", "10", "12"]
+    },
+    {
+      "id": "sci_010",
+      "difficulty": "easy",
+      "question": "What is the boiling point of water in Celsius?",
+      "correct_answer": "100°C",
+      "incorrect_answers": ["90°C", "80°C", "110°C"]
+    },
+    {
+      "id": "sci_011",
+      "difficulty": "easy",
+      "question": "What color is chlorophyll?",
+      "correct_answer": "Green",
+      "incorrect_answers": ["Yellow", "Blue", "Red"]
+    },
+    {
+      "id": "sci_012",
+      "difficulty": "easy",
+      "question": "Which organ filters blood in the human body?",
+      "correct_answer": "Kidney",
+      "incorrect_answers": ["Liver", "Lungs", "Heart"]
+    },
+    {
+      "id": "sci_013",
+      "difficulty": "easy",
+      "question": "What is the freezing point of water in Celsius?",
+      "correct_answer": "0°C",
+      "incorrect_answers": ["-10°C", "10°C", "-5°C"]
+    },
+    {
+      "id": "sci_014",
+      "difficulty": "easy",
+      "question": "Which planet is known as the Red Planet?",
+      "correct_answer": "Mars",
+      "incorrect_answers": ["Venus", "Mercury", "Saturn"]
+    },
+    {
+      "id": "sci_015",
+      "difficulty": "easy",
+      "question": "What do bees produce?",
+      "correct_answer": "Honey",
+      "incorrect_answers": ["Wax only", "Silk", "Resin"]
+    },
+    {
+      "id": "sci_016",
+      "difficulty": "easy",
+      "question": "What is the most abundant gas in Earth's atmosphere?",
+      "correct_answer": "Nitrogen",
+      "incorrect_answers": ["Oxygen", "Carbon dioxide", "Argon"]
+    },
+    {
+      "id": "sci_017",
+      "difficulty": "easy",
+      "question": "How many chambers does a human heart have?",
+      "correct_answer": "4",
+      "incorrect_answers": ["2", "3", "6"]
+    },
+    {
+      "id": "sci_018",
+      "difficulty": "easy",
+      "question": "What is the process by which water turns into vapor?",
+      "correct_answer": "Evaporation",
+      "incorrect_answers": ["Condensation", "Sublimation", "Precipitation"]
+    },
+    {
+      "id": "sci_019",
+      "difficulty": "easy",
+      "question": "Which animal has the largest brain relative to body size?",
+      "correct_answer": "Human",
+      "incorrect_answers": ["Dolphin", "Elephant", "Chimpanzee"]
+    },
+    {
+      "id": "sci_020",
+      "difficulty": "easy",
+      "question": "What is the hardest natural material?",
+      "correct_answer": "Diamond",
+      "incorrect_answers": ["Quartz", "Titanium", "Obsidian"]
+    },
+    {
+      "id": "sci_021",
+      "difficulty": "easy",
+      "question": "How many bones are in the adult human body?",
+      "correct_answer": "206",
+      "incorrect_answers": ["196", "216", "226"]
+    },
+    {
+      "id": "sci_022",
+      "difficulty": "easy",
+      "question": "What gas do plants release during photosynthesis?",
+      "correct_answer": "Oxygen",
+      "incorrect_answers": ["Carbon dioxide", "Nitrogen", "Hydrogen"]
+    },
+    {
+      "id": "sci_023",
+      "difficulty": "easy",
+      "question": "What is the unit of electrical resistance?",
+      "correct_answer": "Ohm",
+      "incorrect_answers": ["Volt", "Ampere", "Watt"]
+    },
+    {
+      "id": "sci_024",
+      "difficulty": "easy",
+      "question": "Which vitamin is produced when skin is exposed to sunlight?",
+      "correct_answer": "Vitamin D",
+      "incorrect_answers": ["Vitamin A", "Vitamin C", "Vitamin B12"]
+    },
+    {
+      "id": "sci_025",
+      "difficulty": "easy",
+      "question": "What is the name of the force that opposes motion?",
+      "correct_answer": "Friction",
+      "incorrect_answers": ["Gravity", "Tension", "Inertia"]
+    },
+    {
+      "id": "sci_026",
+      "difficulty": "easy",
+      "question": "What is the powerhouse of the cell?",
+      "correct_answer": "Mitochondria",
+      "incorrect_answers": ["Nucleus", "Ribosome", "Vacuole"]
+    },
+    {
+      "id": "sci_027",
+      "difficulty": "easy",
+      "question": "Which planet has the most visible rings?",
+      "correct_answer": "Saturn",
+      "incorrect_answers": ["Jupiter", "Uranus", "Neptune"]
+    },
+    {
+      "id": "sci_028",
+      "difficulty": "easy",
+      "question": "What is the chemical symbol for gold?",
+      "correct_answer": "Au",
+      "incorrect_answers": ["Ag", "Fe", "Go"]
+    },
+    {
+      "id": "sci_029",
+      "difficulty": "easy",
+      "question": "What type of energy does the Sun produce?",
+      "correct_answer": "Light and heat",
+      "incorrect_answers": ["Chemical energy", "Kinetic energy", "Nuclear only"]
+    },
+    {
+      "id": "sci_030",
+      "difficulty": "easy",
+      "question": "How many teeth does an adult human have?",
+      "correct_answer": "32",
+      "incorrect_answers": ["28", "30", "36"]
+    },
+    {
+      "id": "sci_031",
+      "difficulty": "medium",
+      "question": "What is the chemical formula for table salt?",
+      "correct_answer": "NaCl",
+      "incorrect_answers": ["KCl", "CaCl2", "NaOH"]
+    },
+    {
+      "id": "sci_032",
+      "difficulty": "medium",
+      "question": "Which element has the atomic number 6?",
+      "correct_answer": "Carbon",
+      "incorrect_answers": ["Oxygen", "Nitrogen", "Helium"]
+    },
+    {
+      "id": "sci_033",
+      "difficulty": "medium",
+      "question": "What is the speed of light in km/s?",
+      "correct_answer": "300,000 km/s",
+      "incorrect_answers": ["150,000 km/s", "500,000 km/s", "200,000 km/s"]
+    },
+    {
+      "id": "sci_034",
+      "difficulty": "medium",
+      "question": "What does DNA stand for?",
+      "correct_answer": "Deoxyribonucleic Acid",
+      "incorrect_answers": ["Dynamic Nucleic Acid", "Double Nucleic Assembly", "Deoxyribose Natural Acid"]
+    },
+    {
+      "id": "sci_035",
+      "difficulty": "medium",
+      "question": "Which planet has the shortest day?",
+      "correct_answer": "Jupiter",
+      "incorrect_answers": ["Saturn", "Mars", "Mercury"]
+    },
+    {
+      "id": "sci_036",
+      "difficulty": "medium",
+      "question": "What is the main function of red blood cells?",
+      "correct_answer": "Carry oxygen",
+      "incorrect_answers": ["Fight infections", "Clot blood", "Produce hormones"]
+    },
+    {
+      "id": "sci_037",
+      "difficulty": "medium",
+      "question": "What layer of Earth do we live on?",
+      "correct_answer": "Crust",
+      "incorrect_answers": ["Mantle", "Core", "Lithosphere"]
+    },
+    {
+      "id": "sci_038",
+      "difficulty": "medium",
+      "question": "What is the process of a liquid turning into a solid called?",
+      "correct_answer": "Solidification",
+      "incorrect_answers": ["Evaporation", "Condensation", "Sublimation"]
+    },
+    {
+      "id": "sci_039",
+      "difficulty": "medium",
+      "question": "Which organ produces bile in the human body?",
+      "correct_answer": "Liver",
+      "incorrect_answers": ["Pancreas", "Stomach", "Gallbladder"]
+    },
+    {
+      "id": "sci_040",
+      "difficulty": "medium",
+      "question": "What is the most common element in the universe?",
+      "correct_answer": "Hydrogen",
+      "incorrect_answers": ["Helium", "Oxygen", "Carbon"]
+    },
+    {
+      "id": "sci_041",
+      "difficulty": "medium",
+      "question": "What is the name of the galaxy we live in?",
+      "correct_answer": "Milky Way",
+      "incorrect_answers": ["Andromeda", "Triangulum", "Sombrero"]
+    },
+    {
+      "id": "sci_042",
+      "difficulty": "medium",
+      "question": "Which part of the brain controls balance?",
+      "correct_answer": "Cerebellum",
+      "incorrect_answers": ["Cerebrum", "Brainstem", "Hippocampus"]
+    },
+    {
+      "id": "sci_043",
+      "difficulty": "medium",
+      "question": "What is the unit of frequency?",
+      "correct_answer": "Hertz",
+      "incorrect_answers": ["Newton", "Pascal", "Joule"]
+    },
+    {
+      "id": "sci_044",
+      "difficulty": "medium",
+      "question": "What is the process by which rocks are broken down?",
+      "correct_answer": "Weathering",
+      "incorrect_answers": ["Erosion", "Sedimentation", "Compaction"]
+    },
+    {
+      "id": "sci_045",
+      "difficulty": "medium",
+      "question": "Which type of rock is formed from cooled lava?",
+      "correct_answer": "Igneous rock",
+      "incorrect_answers": ["Sedimentary rock", "Metamorphic rock", "Limestone"]
+    },
+    {
+      "id": "sci_046",
+      "difficulty": "medium",
+      "question": "What is the chemical symbol for iron?",
+      "correct_answer": "Fe",
+      "incorrect_answers": ["Ir", "In", "Io"]
+    },
+    {
+      "id": "sci_047",
+      "difficulty": "medium",
+      "question": "What is the name of the closest galaxy to the Milky Way?",
+      "correct_answer": "Andromeda",
+      "incorrect_answers": ["Triangulum", "Canis Major Dwarf", "Large Magellanic Cloud"]
+    },
+    {
+      "id": "sci_048",
+      "difficulty": "medium",
+      "question": "What is the largest organ in the human body?",
+      "correct_answer": "Skin",
+      "incorrect_answers": ["Liver", "Intestine", "Lungs"]
+    },
+    {
+      "id": "sci_049",
+      "difficulty": "medium",
+      "question": "What is the study of earthquakes called?",
+      "correct_answer": "Seismology",
+      "incorrect_answers": ["Geology", "Volcanology", "Tectonics"]
+    },
+    {
+      "id": "sci_050",
+      "difficulty": "medium",
+      "question": "Which vitamin is essential for blood clotting?",
+      "correct_answer": "Vitamin K",
+      "incorrect_answers": ["Vitamin C", "Vitamin D", "Vitamin B12"]
+    },
+    {
+      "id": "sci_051",
+      "difficulty": "medium",
+      "question": "What is the pH of a neutral solution?",
+      "correct_answer": "7",
+      "incorrect_answers": ["0", "14", "5"]
+    },
+    {
+      "id": "sci_052",
+      "difficulty": "medium",
+      "question": "What is the name of the process where solid turns directly into gas?",
+      "correct_answer": "Sublimation",
+      "incorrect_answers": ["Evaporation", "Condensation", "Deposition"]
+    },
+    {
+      "id": "sci_053",
+      "difficulty": "medium",
+      "question": "Which planet spins on its side?",
+      "correct_answer": "Uranus",
+      "incorrect_answers": ["Neptune", "Saturn", "Venus"]
+    },
+    {
+      "id": "sci_054",
+      "difficulty": "medium",
+      "question": "What is the name of the tube that connects the throat to the stomach?",
+      "correct_answer": "Esophagus",
+      "incorrect_answers": ["Trachea", "Larynx", "Bronchus"]
+    },
+    {
+      "id": "sci_055",
+      "difficulty": "medium",
+      "question": "What type of lens is used to correct nearsightedness?",
+      "correct_answer": "Concave lens",
+      "incorrect_answers": ["Convex lens", "Flat lens", "Bifocal lens"]
+    },
+    {
+      "id": "sci_056",
+      "difficulty": "medium",
+      "question": "How many chromosomes does a typical human cell have?",
+      "correct_answer": "46",
+      "incorrect_answers": ["23", "48", "44"]
+    },
+    {
+      "id": "sci_057",
+      "difficulty": "medium",
+      "question": "What is the name of the boundary between Earth's crust and mantle?",
+      "correct_answer": "Mohorovičić discontinuity",
+      "incorrect_answers": ["Gutenberg discontinuity", "Lehmann discontinuity", "Conrad discontinuity"]
+    },
+    {
+      "id": "sci_058",
+      "difficulty": "medium",
+      "question": "Which gas is produced when acids react with metals?",
+      "correct_answer": "Hydrogen",
+      "incorrect_answers": ["Oxygen", "Carbon dioxide", "Nitrogen"]
+    },
+    {
+      "id": "sci_059",
+      "difficulty": "medium",
+      "question": "What is the unit of electric current?",
+      "correct_answer": "Ampere",
+      "incorrect_answers": ["Volt", "Watt", "Ohm"]
+    },
+    {
+      "id": "sci_060",
+      "difficulty": "medium",
+      "question": "Which planet has the longest year?",
+      "correct_answer": "Neptune",
+      "incorrect_answers": ["Uranus", "Saturn", "Jupiter"]
+    },
+    {
+      "id": "sci_061",
+      "difficulty": "hard",
+      "question": "What is the Heisenberg Uncertainty Principle?",
+      "correct_answer": "You cannot know both position and momentum of a particle simultaneously",
+      "incorrect_answers": ["Energy is conserved in all reactions", "Light travels at constant speed", "Matter cannot be created or destroyed"]
+    },
+    {
+      "id": "sci_062",
+      "difficulty": "hard",
+      "question": "What is the name of the enzyme that unwinds DNA during replication?",
+      "correct_answer": "Helicase",
+      "incorrect_answers": ["Polymerase", "Ligase", "Primase"]
+    },
+    {
+      "id": "sci_063",
+      "difficulty": "hard",
+      "question": "What is the half-life of Carbon-14?",
+      "correct_answer": "5,730 years",
+      "incorrect_answers": ["1,000 years", "10,000 years", "50,000 years"]
+    },
+    {
+      "id": "sci_064",
+      "difficulty": "hard",
+      "question": "Which scientist proposed the theory of natural selection?",
+      "correct_answer": "Charles Darwin",
+      "incorrect_answers": ["Gregor Mendel", "Louis Pasteur", "Alfred Wallace"]
+    },
+    {
+      "id": "sci_065",
+      "difficulty": "hard",
+      "question": "What is the name of the force carrier particle for electromagnetism?",
+      "correct_answer": "Photon",
+      "incorrect_answers": ["Gluon", "W boson", "Graviton"]
+    },
+    {
+      "id": "sci_066",
+      "difficulty": "hard",
+      "question": "What is the Schwarzschild radius?",
+      "correct_answer": "The radius at which an object becomes a black hole",
+      "incorrect_answers": ["The radius of the Sun", "The distance from Earth to the Moon", "The size of a neutron star"]
+    },
+    {
+      "id": "sci_067",
+      "difficulty": "hard",
+      "question": "Which organelle is responsible for protein synthesis?",
+      "correct_answer": "Ribosome",
+      "incorrect_answers": ["Golgi apparatus", "Endoplasmic reticulum", "Lysosome"]
+    },
+    {
+      "id": "sci_068",
+      "difficulty": "hard",
+      "question": "What is the name of the quantum effect where particles tunnel through barriers?",
+      "correct_answer": "Quantum tunneling",
+      "incorrect_answers": ["Quantum entanglement", "Wave-particle duality", "Superposition"]
+    },
+    {
+      "id": "sci_069",
+      "difficulty": "hard",
+      "question": "Which element was the first to be discovered using spectroscopy?",
+      "correct_answer": "Helium",
+      "incorrect_answers": ["Neon", "Argon", "Xenon"]
+    },
+    {
+      "id": "sci_070",
+      "difficulty": "hard",
+      "question": "What is the name of the process by which the Sun produces energy?",
+      "correct_answer": "Nuclear fusion",
+      "incorrect_answers": ["Nuclear fission", "Combustion", "Radioactive decay"]
+    },
+    {
+      "id": "sci_071",
+      "difficulty": "hard",
+      "question": "What is the Doppler effect?",
+      "correct_answer": "Change in frequency due to relative motion between source and observer",
+      "incorrect_answers": ["Bending of light around massive objects", "Scattering of light by particles", "Absorption of light by matter"]
+    },
+    {
+      "id": "sci_072",
+      "difficulty": "hard",
+      "question": "What is the chemical formula for glucose?",
+      "correct_answer": "C6H12O6",
+      "incorrect_answers": ["C12H22O11", "C6H6O6", "CH2O"]
+    },
+    {
+      "id": "sci_073",
+      "difficulty": "hard",
+      "question": "Which law states that energy cannot be created or destroyed?",
+      "correct_answer": "First Law of Thermodynamics",
+      "incorrect_answers": ["Second Law of Thermodynamics", "Newton's First Law", "Boyle's Law"]
+    },
+    {
+      "id": "sci_074",
+      "difficulty": "hard",
+      "question": "What is the name of the protein that carries oxygen in red blood cells?",
+      "correct_answer": "Hemoglobin",
+      "incorrect_answers": ["Myoglobin", "Albumin", "Fibrinogen"]
+    },
+    {
+      "id": "sci_075",
+      "difficulty": "hard",
+      "question": "What is the Pauli Exclusion Principle?",
+      "correct_answer": "No two electrons can have the same quantum state in an atom",
+      "incorrect_answers": ["Electrons orbit in fixed paths", "Energy levels are quantized", "Particles exist in superposition"]
+    },
+    {
+      "id": "sci_076",
+      "difficulty": "hard",
+      "question": "Which branch of physics studies subatomic particles?",
+      "correct_answer": "Particle physics",
+      "incorrect_answers": ["Quantum mechanics", "Nuclear physics", "Astrophysics"]
+    },
+    {
+      "id": "sci_077",
+      "difficulty": "hard",
+      "question": "What is the name of the membrane surrounding a cell?",
+      "correct_answer": "Plasma membrane",
+      "incorrect_answers": ["Cell wall", "Nuclear envelope", "Endoplasmic reticulum"]
+    },
+    {
+      "id": "sci_078",
+      "difficulty": "hard",
+      "question": "What is the speed of sound in dry air at 20°C?",
+      "correct_answer": "343 m/s",
+      "incorrect_answers": ["299 m/s", "400 m/s", "500 m/s"]
+    },
+    {
+      "id": "sci_079",
+      "difficulty": "hard",
+      "question": "Which type of radiation has the highest penetrating power?",
+      "correct_answer": "Gamma radiation",
+      "incorrect_answers": ["Alpha radiation", "Beta radiation", "X-rays"]
+    },
+    {
+      "id": "sci_080",
+      "difficulty": "hard",
+      "question": "What is the name of the scientist who discovered penicillin?",
+      "correct_answer": "Alexander Fleming",
+      "incorrect_answers": ["Louis Pasteur", "Joseph Lister", "Robert Koch"]
+    },
+    {
+      "id": "sci_081",
+      "difficulty": "hard",
+      "question": "What is Avogadro's number?",
+      "correct_answer": "6.022 × 10²³",
+      "incorrect_answers": ["6.022 × 10²⁰", "3.14 × 10²³", "9.81 × 10²³"]
+    },
+    {
+      "id": "sci_082",
+      "difficulty": "hard",
+      "question": "What is the name of the phenomenon where light bends around massive objects?",
+      "correct_answer": "Gravitational lensing",
+      "incorrect_answers": ["Refraction", "Diffraction", "Dispersion"]
+    },
+    {
+      "id": "sci_083",
+      "difficulty": "hard",
+      "question": "Which hormone regulates blood sugar levels?",
+      "correct_answer": "Insulin",
+      "incorrect_answers": ["Glucagon", "Cortisol", "Adrenaline"]
+    },
+    {
+      "id": "sci_084",
+      "difficulty": "hard",
+      "question": "What is the name of the theory describing the origin of the universe?",
+      "correct_answer": "Big Bang Theory",
+      "incorrect_answers": ["Steady State Theory", "Inflation Theory", "String Theory"]
+    },
+    {
+      "id": "sci_085",
+      "difficulty": "hard",
+      "question": "Which type of bond involves the sharing of electron pairs?",
+      "correct_answer": "Covalent bond",
+      "incorrect_answers": ["Ionic bond", "Hydrogen bond", "Metallic bond"]
+    },
+    {
+      "id": "sci_086",
+      "difficulty": "hard",
+      "question": "What is the name of the process where cells divide to produce gametes?",
+      "correct_answer": "Meiosis",
+      "incorrect_answers": ["Mitosis", "Binary fission", "Budding"]
+    },
+    {
+      "id": "sci_087",
+      "difficulty": "hard",
+      "question": "What is the escape velocity from Earth's surface?",
+      "correct_answer": "11.2 km/s",
+      "incorrect_answers": ["7.9 km/s", "15.0 km/s", "9.8 km/s"]
+    },
+    {
+      "id": "sci_088",
+      "difficulty": "hard",
+      "question": "Which neurotransmitter is primarily associated with reward and pleasure?",
+      "correct_answer": "Dopamine",
+      "incorrect_answers": ["Serotonin", "Acetylcholine", "GABA"]
+    },
+    {
+      "id": "sci_089",
+      "difficulty": "hard",
+      "question": "What is the name of the scientist who developed the periodic table?",
+      "correct_answer": "Dmitri Mendeleev",
+      "incorrect_answers": ["Antoine Lavoisier", "John Dalton", "Henry Moseley"]
+    },
+    {
+      "id": "sci_090",
+      "difficulty": "hard",
+      "question": "What is dark matter?",
+      "correct_answer": "Matter that does not emit or interact with light but has gravitational effects",
+      "incorrect_answers": ["Black holes", "Anti-matter", "Neutron stars"]
+    },
+    {
+      "id": "sci_091",
+      "difficulty": "hard",
+      "question": "Which process converts ADP to ATP in cells?",
+      "correct_answer": "Phosphorylation",
+      "incorrect_answers": ["Glycolysis", "Hydrolysis", "Oxidation"]
+    },
+    {
+      "id": "sci_092",
+      "difficulty": "hard",
+      "question": "What is Ohm's Law?",
+      "correct_answer": "Voltage equals current times resistance",
+      "incorrect_answers": ["Power equals voltage times current", "Energy equals mass times speed squared", "Force equals mass times acceleration"]
+    },
+    {
+      "id": "sci_093",
+      "difficulty": "hard",
+      "question": "What is the name of the structure that transmits nerve impulses between neurons?",
+      "correct_answer": "Synapse",
+      "incorrect_answers": ["Axon", "Dendrite", "Myelin sheath"]
+    },
+    {
+      "id": "sci_094",
+      "difficulty": "hard",
+      "question": "Which type of electromagnetic radiation has the shortest wavelength?",
+      "correct_answer": "Gamma rays",
+      "incorrect_answers": ["X-rays", "Ultraviolet", "Radio waves"]
+    },
+    {
+      "id": "sci_095",
+      "difficulty": "hard",
+      "question": "What is the name of the process where RNA is made from DNA?",
+      "correct_answer": "Transcription",
+      "incorrect_answers": ["Translation", "Replication", "Splicing"]
+    },
+    {
+      "id": "sci_096",
+      "difficulty": "hard",
+      "question": "What is the Chandrasekhar limit?",
+      "correct_answer": "The maximum mass of a stable white dwarf star",
+      "incorrect_answers": ["The minimum mass for nuclear fusion", "The maximum size of a neutron star", "The distance light travels in a year"]
+    },
+    {
+      "id": "sci_097",
+      "difficulty": "hard",
+      "question": "Which element is used as a moderator in nuclear reactors?",
+      "correct_answer": "Graphite",
+      "incorrect_answers": ["Uranium", "Plutonium", "Zirconium"]
+    },
+    {
+      "id": "sci_098",
+      "difficulty": "hard",
+      "question": "What is the name of the force that holds quarks together?",
+      "correct_answer": "Strong nuclear force",
+      "incorrect_answers": ["Weak nuclear force", "Electromagnetic force", "Gravitational force"]
+    },
+    {
+      "id": "sci_099",
+      "difficulty": "hard",
+      "question": "What is the name of the scientist who proposed the electron cloud model?",
+      "correct_answer": "Erwin Schrödinger",
+      "incorrect_answers": ["Niels Bohr", "Ernest Rutherford", "Werner Heisenberg"]
+    },
+    {
+      "id": "sci_100",
+      "difficulty": "hard",
+      "question": "What is the Coriolis effect?",
+      "correct_answer": "Deflection of moving objects due to Earth's rotation",
+      "incorrect_answers": ["The pull of tides on Earth", "The bending of light by gravity", "The warming of Earth's surface by the Sun"]
+    }
+  ]
+}

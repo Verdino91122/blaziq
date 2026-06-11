@@ -124,16 +124,21 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.arenaBlack,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Text('SETTINGS', style: AppTheme.screenTitle),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+      backgroundColor: Colors.transparent,
+      body: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.backgroundGradient,
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                Text('SETTINGS', style: AppTheme.screenTitle),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 children: [
                   _SectionHeader('AUDIO & HAPTICS'),
                   _ToggleRow(
@@ -218,6 +223,8 @@ class _MenuScreenState extends State<MenuScreen> {
           ],
         ),
       ),
+    ),
+    ),
     );
   }
 }

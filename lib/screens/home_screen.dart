@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import 'friend_mode_screen.dart';
 import 'solo_game_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,40 +34,66 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (_) => SoloGameScreen(cheatMode: _cheatMode),
         ),
       );
+    } else if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const FriendModeScreen()),
+      );
     }
-    // Friend and Online cards are not yet available — ribbon makes it clear
+    // Online card (index 2) not yet available — ribbon makes it clear
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.arenaBlack,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            const _HeaderBar(),
-            const SizedBox(height: 28),
-            _BrainLogoSection(
-              cheatMode: _cheatMode,
-              onCheatToggle: () => setState(() => _cheatMode = !_cheatMode),
-            ),
-            const SizedBox(height: 28),
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: 3,
-                onPageChanged: (i) => setState(() => _currentPage = i),
-                itemBuilder: (context, index) =>
-                    _ModeCard(index: index, onTap: () => _onModeTap(index)),
+      backgroundColor: Colors.transparent,
+      body: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.backgroundGradient,
+          ),
+          child: SafeArea(
+            top: false,
+            child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 52% of the SafeArea-adjusted available height goes to the card
+            // carousel. Percentage-based so it adapts to any screen size without
+            // relying on a brittle fixed-content estimate.
+            final cardHeight =
+                (constraints.maxHeight * 0.52).clamp(220.0, 460.0);
+            return SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
+                children: [
+                  const _HeaderBar(),
+                  const SizedBox(height: 28),
+                  _BrainLogoSection(
+                    cheatMode: _cheatMode,
+                    onCheatToggle: () =>
+                        setState(() => _cheatMode = !_cheatMode),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    height: cardHeight,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: 3,
+                      onPageChanged: (i) => setState(() => _currentPage = i),
+                      itemBuilder: (context, index) =>
+                          _ModeCard(index: index, onTap: () => _onModeTap(index)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _DotIndicator(count: 3, current: _currentPage),
+                  const SizedBox(height: 20),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            _DotIndicator(count: 3, current: _currentPage),
-            const SizedBox(height: 20),
-          ],
+            );
+          },
         ),
       ),
+    ),
+    ),
     );
   }
 }
@@ -312,7 +339,8 @@ class _ModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = _cards[index];
-    final isSolo = index == 0;
+    final hasPlayButton = index == 0 || index == 1;
+    final isComingSoon = index == 2;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -332,8 +360,7 @@ class _ModeCard extends StatelessWidget {
             children: [
               // Grid texture
               Positioned.fill(child: CustomPaint(painter: _GridPainter())),
-              // Card content — Positioned.fill gives the Column full height so
-              // mainAxisAlignment.center actually works inside the Stack
+              // Card content
               Positioned.fill(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
@@ -373,7 +400,7 @@ class _ModeCard extends StatelessWidget {
                           height: 1.4,
                         ),
                       ),
-                      if (isSolo) ...[
+                      if (hasPlayButton) ...[
                         const SizedBox(height: 32),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -391,8 +418,8 @@ class _ModeCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Diagonal "COMING SOON" ribbon — clipped by parent ClipRRect
-              if (!isSolo)
+              // Diagonal "COMING SOON" ribbon — Online mode only
+              if (isComingSoon)
                 Positioned(
                   top: 16,
                   right: -52,

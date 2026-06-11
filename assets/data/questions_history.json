@@ -1,0 +1,705 @@
+{
+  "category": "history",
+  "questions": [
+    {
+      "id": "his_001",
+      "difficulty": "easy",
+      "question": "Who was the first President of the United States?",
+      "correct_answer": "George Washington",
+      "incorrect_answers": ["Thomas Jefferson", "John Adams", "Benjamin Franklin"]
+    },
+    {
+      "id": "his_002",
+      "difficulty": "easy",
+      "question": "In which year did World War II end?",
+      "correct_answer": "1945",
+      "incorrect_answers": ["1943", "1944", "1946"]
+    },
+    {
+      "id": "his_003",
+      "difficulty": "easy",
+      "question": "Which ancient wonder was located in Egypt?",
+      "correct_answer": "The Great Pyramid of Giza",
+      "incorrect_answers": ["The Colossus of Rhodes", "The Hanging Gardens", "The Lighthouse of Alexandria"]
+    },
+    {
+      "id": "his_004",
+      "difficulty": "easy",
+      "question": "Who painted the Mona Lisa?",
+      "correct_answer": "Leonardo da Vinci",
+      "incorrect_answers": ["Michelangelo", "Raphael", "Picasso"]
+    },
+    {
+      "id": "his_005",
+      "difficulty": "easy",
+      "question": "Which country was the first to land a man on the Moon?",
+      "correct_answer": "United States",
+      "incorrect_answers": ["Soviet Union", "China", "France"]
+    },
+    {
+      "id": "his_006",
+      "difficulty": "easy",
+      "question": "In which year did the Berlin Wall fall?",
+      "correct_answer": "1989",
+      "incorrect_answers": ["1985", "1991", "1987"]
+    },
+    {
+      "id": "his_007",
+      "difficulty": "easy",
+      "question": "Who was the first person to walk on the Moon?",
+      "correct_answer": "Neil Armstrong",
+      "incorrect_answers": ["Buzz Aldrin", "Yuri Gagarin", "John Glenn"]
+    },
+    {
+      "id": "his_008",
+      "difficulty": "easy",
+      "question": "Which empire was ruled by Julius Caesar?",
+      "correct_answer": "Roman Empire",
+      "incorrect_answers": ["Greek Empire", "Ottoman Empire", "Persian Empire"]
+    },
+    {
+      "id": "his_009",
+      "difficulty": "easy",
+      "question": "In which year did World War I begin?",
+      "correct_answer": "1914",
+      "incorrect_answers": ["1912", "1916", "1918"]
+    },
+    {
+      "id": "his_010",
+      "difficulty": "easy",
+      "question": "Who invented the telephone?",
+      "correct_answer": "Alexander Graham Bell",
+      "incorrect_answers": ["Thomas Edison", "Nikola Tesla", "Guglielmo Marconi"]
+    },
+    {
+      "id": "his_011",
+      "difficulty": "easy",
+      "question": "Which country gifted the Statue of Liberty to the USA?",
+      "correct_answer": "France",
+      "incorrect_answers": ["England", "Spain", "Italy"]
+    },
+    {
+      "id": "his_012",
+      "difficulty": "easy",
+      "question": "What was the name of the ship that sank in 1912?",
+      "correct_answer": "Titanic",
+      "incorrect_answers": ["Lusitania", "Britannic", "Olympic"]
+    },
+    {
+      "id": "his_013",
+      "difficulty": "easy",
+      "question": "Who was the first woman to win a Nobel Prize?",
+      "correct_answer": "Marie Curie",
+      "incorrect_answers": ["Florence Nightingale", "Rosalind Franklin", "Ada Lovelace"]
+    },
+    {
+      "id": "his_014",
+      "difficulty": "easy",
+      "question": "In which city was the Eiffel Tower built?",
+      "correct_answer": "Paris",
+      "incorrect_answers": ["Rome", "London", "Berlin"]
+    },
+    {
+      "id": "his_015",
+      "difficulty": "easy",
+      "question": "Which ancient civilization built the pyramids?",
+      "correct_answer": "Ancient Egyptians",
+      "incorrect_answers": ["Ancient Romans", "Ancient Greeks", "Ancient Persians"]
+    },
+    {
+      "id": "his_016",
+      "difficulty": "easy",
+      "question": "Who wrote the Declaration of Independence?",
+      "correct_answer": "Thomas Jefferson",
+      "incorrect_answers": ["George Washington", "Benjamin Franklin", "John Adams"]
+    },
+    {
+      "id": "his_017",
+      "difficulty": "easy",
+      "question": "In which year did Christopher Columbus reach the Americas?",
+      "correct_answer": "1492",
+      "incorrect_answers": ["1488", "1500", "1510"]
+    },
+    {
+      "id": "his_018",
+      "difficulty": "easy",
+      "question": "Which country did Adolf Hitler lead during World War II?",
+      "correct_answer": "Germany",
+      "incorrect_answers": ["Austria", "Italy", "Hungary"]
+    },
+    {
+      "id": "his_019",
+      "difficulty": "easy",
+      "question": "What was the name of the first artificial satellite launched into space?",
+      "correct_answer": "Sputnik",
+      "incorrect_answers": ["Apollo", "Vostok", "Explorer"]
+    },
+    {
+      "id": "his_020",
+      "difficulty": "easy",
+      "question": "Which war was fought between the North and South in America?",
+      "correct_answer": "American Civil War",
+      "incorrect_answers": ["American Revolution", "War of 1812", "Spanish-American War"]
+    },
+    {
+      "id": "his_021",
+      "difficulty": "easy",
+      "question": "Who was the first female Prime Minister of the United Kingdom?",
+      "correct_answer": "Margaret Thatcher",
+      "incorrect_answers": ["Theresa May", "Queen Victoria", "Elizabeth II"]
+    },
+    {
+      "id": "his_022",
+      "difficulty": "easy",
+      "question": "In which year did the French Revolution begin?",
+      "correct_answer": "1789",
+      "incorrect_answers": ["1776", "1804", "1815"]
+    },
+    {
+      "id": "his_023",
+      "difficulty": "easy",
+      "question": "Which ancient Greek city-state was known for its warrior culture?",
+      "correct_answer": "Sparta",
+      "incorrect_answers": ["Athens", "Corinth", "Thebes"]
+    },
+    {
+      "id": "his_024",
+      "difficulty": "easy",
+      "question": "Who was known as the 'Father of the Nation' in India?",
+      "correct_answer": "Mahatma Gandhi",
+      "incorrect_answers": ["Jawaharlal Nehru", "Subhas Chandra Bose", "B.R. Ambedkar"]
+    },
+    {
+      "id": "his_025",
+      "difficulty": "easy",
+      "question": "Which empire was the largest in history by land area?",
+      "correct_answer": "Mongol Empire",
+      "incorrect_answers": ["British Empire", "Roman Empire", "Ottoman Empire"]
+    },
+    {
+      "id": "his_026",
+      "difficulty": "easy",
+      "question": "In which year did Nelson Mandela become President of South Africa?",
+      "correct_answer": "1994",
+      "incorrect_answers": ["1990", "1996", "1992"]
+    },
+    {
+      "id": "his_027",
+      "difficulty": "easy",
+      "question": "Who invented the light bulb?",
+      "correct_answer": "Thomas Edison",
+      "incorrect_answers": ["Nikola Tesla", "Alexander Graham Bell", "Benjamin Franklin"]
+    },
+    {
+      "id": "his_028",
+      "difficulty": "easy",
+      "question": "Which country was the first to give women the right to vote?",
+      "correct_answer": "New Zealand",
+      "incorrect_answers": ["Australia", "Finland", "USA"]
+    },
+    {
+      "id": "his_029",
+      "difficulty": "easy",
+      "question": "What was the name of the war between the USA and Vietnam?",
+      "correct_answer": "Vietnam War",
+      "incorrect_answers": ["Korean War", "Gulf War", "Cold War"]
+    },
+    {
+      "id": "his_030",
+      "difficulty": "easy",
+      "question": "Who was the first Emperor of China?",
+      "correct_answer": "Qin Shi Huang",
+      "incorrect_answers": ["Emperor Wu", "Genghis Khan", "Kublai Khan"]
+    },
+    {
+      "id": "his_031",
+      "difficulty": "medium",
+      "question": "Which treaty ended World War I?",
+      "correct_answer": "Treaty of Versailles",
+      "incorrect_answers": ["Treaty of Paris", "Treaty of Utrecht", "Treaty of Westphalia"]
+    },
+    {
+      "id": "his_032",
+      "difficulty": "medium",
+      "question": "In which year did the Soviet Union collapse?",
+      "correct_answer": "1991",
+      "incorrect_answers": ["1989", "1993", "1987"]
+    },
+    {
+      "id": "his_033",
+      "difficulty": "medium",
+      "question": "Who was the last Tsar of Russia?",
+      "correct_answer": "Nicholas II",
+      "incorrect_answers": ["Alexander III", "Alexander II", "Peter the Great"]
+    },
+    {
+      "id": "his_034",
+      "difficulty": "medium",
+      "question": "Which battle is considered Napoleon's final defeat?",
+      "correct_answer": "Battle of Waterloo",
+      "incorrect_answers": ["Battle of Austerlitz", "Battle of Leipzig", "Battle of Trafalgar"]
+    },
+    {
+      "id": "his_035",
+      "difficulty": "medium",
+      "question": "In which year was the Magna Carta signed?",
+      "correct_answer": "1215",
+      "incorrect_answers": ["1066", "1348", "1415"]
+    },
+    {
+      "id": "his_036",
+      "difficulty": "medium",
+      "question": "Which civilization invented the first writing system?",
+      "correct_answer": "Sumerians",
+      "incorrect_answers": ["Egyptians", "Chinese", "Indus Valley"]
+    },
+    {
+      "id": "his_037",
+      "difficulty": "medium",
+      "question": "Who led the Cuban Revolution?",
+      "correct_answer": "Fidel Castro",
+      "incorrect_answers": ["Che Guevara", "Fulgencio Batista", "Raúl Castro"]
+    },
+    {
+      "id": "his_038",
+      "difficulty": "medium",
+      "question": "In which year did India gain independence from Britain?",
+      "correct_answer": "1947",
+      "incorrect_answers": ["1945", "1950", "1942"]
+    },
+    {
+      "id": "his_039",
+      "difficulty": "medium",
+      "question": "Which empire built the Colosseum in Rome?",
+      "correct_answer": "Roman Empire",
+      "incorrect_answers": ["Byzantine Empire", "Ottoman Empire", "Holy Roman Empire"]
+    },
+    {
+      "id": "his_040",
+      "difficulty": "medium",
+      "question": "Who was the first woman to fly solo across the Atlantic Ocean?",
+      "correct_answer": "Amelia Earhart",
+      "incorrect_answers": ["Bessie Coleman", "Harriet Quimby", "Jacqueline Cochran"]
+    },
+    {
+      "id": "his_041",
+      "difficulty": "medium",
+      "question": "Which country dropped atomic bombs on Japan in 1945?",
+      "correct_answer": "United States",
+      "incorrect_answers": ["Soviet Union", "United Kingdom", "France"]
+    },
+    {
+      "id": "his_042",
+      "difficulty": "medium",
+      "question": "In which year was the United Nations founded?",
+      "correct_answer": "1945",
+      "incorrect_answers": ["1919", "1948", "1950"]
+    },
+    {
+      "id": "his_043",
+      "difficulty": "medium",
+      "question": "Who was the leader of the Nazi Party in Germany?",
+      "correct_answer": "Adolf Hitler",
+      "incorrect_answers": ["Heinrich Himmler", "Joseph Goebbels", "Hermann Göring"]
+    },
+    {
+      "id": "his_044",
+      "difficulty": "medium",
+      "question": "Which ancient city was destroyed by the eruption of Mount Vesuvius?",
+      "correct_answer": "Pompeii",
+      "incorrect_answers": ["Herculaneum", "Naples", "Rome"]
+    },
+    {
+      "id": "his_045",
+      "difficulty": "medium",
+      "question": "Who was the first European explorer to reach India by sea?",
+      "correct_answer": "Vasco da Gama",
+      "incorrect_answers": ["Christopher Columbus", "Ferdinand Magellan", "Bartolomeu Dias"]
+    },
+    {
+      "id": "his_046",
+      "difficulty": "medium",
+      "question": "In which year did the American Declaration of Independence get signed?",
+      "correct_answer": "1776",
+      "incorrect_answers": ["1775", "1783", "1787"]
+    },
+    {
+      "id": "his_047",
+      "difficulty": "medium",
+      "question": "Which pharaoh is most associated with the construction of the Great Pyramid?",
+      "correct_answer": "Khufu",
+      "incorrect_answers": ["Ramesses II", "Tutankhamun", "Cleopatra"]
+    },
+    {
+      "id": "his_048",
+      "difficulty": "medium",
+      "question": "What was the name of the plan for the systematic murder of Jews by Nazi Germany?",
+      "correct_answer": "The Holocaust",
+      "incorrect_answers": ["Operation Barbarossa", "The Final Solution", "Kristallnacht"]
+    },
+    {
+      "id": "his_049",
+      "difficulty": "medium",
+      "question": "Which country did Germany invade to start World War II?",
+      "correct_answer": "Poland",
+      "incorrect_answers": ["France", "Belgium", "Czechoslovakia"]
+    },
+    {
+      "id": "his_050",
+      "difficulty": "medium",
+      "question": "Who was the first President of the Russian Federation?",
+      "correct_answer": "Boris Yeltsin",
+      "incorrect_answers": ["Mikhail Gorbachev", "Vladimir Putin", "Leonid Brezhnev"]
+    },
+    {
+      "id": "his_051",
+      "difficulty": "medium",
+      "question": "In which year was the Eiffel Tower completed?",
+      "correct_answer": "1889",
+      "incorrect_answers": ["1876", "1900", "1895"]
+    },
+    {
+      "id": "his_052",
+      "difficulty": "medium",
+      "question": "Which empire controlled most of the Middle East during the 16th–20th centuries?",
+      "correct_answer": "Ottoman Empire",
+      "incorrect_answers": ["Mongol Empire", "Persian Empire", "Byzantine Empire"]
+    },
+    {
+      "id": "his_053",
+      "difficulty": "medium",
+      "question": "Who was the British Prime Minister during most of World War II?",
+      "correct_answer": "Winston Churchill",
+      "incorrect_answers": ["Neville Chamberlain", "Clement Attlee", "Anthony Eden"]
+    },
+    {
+      "id": "his_054",
+      "difficulty": "medium",
+      "question": "In which year did the Korean War end?",
+      "correct_answer": "1953",
+      "incorrect_answers": ["1950", "1955", "1948"]
+    },
+    {
+      "id": "his_055",
+      "difficulty": "medium",
+      "question": "Which explorer was the first to circumnavigate the globe?",
+      "correct_answer": "Ferdinand Magellan",
+      "incorrect_answers": ["Christopher Columbus", "Vasco da Gama", "Francis Drake"]
+    },
+    {
+      "id": "his_056",
+      "difficulty": "medium",
+      "question": "What was the name of the secret police under Stalin in the Soviet Union?",
+      "correct_answer": "NKVD",
+      "incorrect_answers": ["KGB", "Stasi", "Gestapo"]
+    },
+    {
+      "id": "his_057",
+      "difficulty": "medium",
+      "question": "In which year was the Great Wall of China completed in its current form?",
+      "correct_answer": "1644",
+      "incorrect_answers": ["221 BC", "1000 AD", "1368"]
+    },
+    {
+      "id": "his_058",
+      "difficulty": "medium",
+      "question": "Which African leader won the Nobel Peace Prize in 1993?",
+      "correct_answer": "Nelson Mandela",
+      "incorrect_answers": ["Desmond Tutu", "Kofi Annan", "Wangari Maathai"]
+    },
+    {
+      "id": "his_059",
+      "difficulty": "medium",
+      "question": "What was the name of the US space program that landed humans on the Moon?",
+      "correct_answer": "Apollo",
+      "incorrect_answers": ["Gemini", "Mercury", "Artemis"]
+    },
+    {
+      "id": "his_060",
+      "difficulty": "medium",
+      "question": "Which revolution took place in Russia in 1917?",
+      "correct_answer": "Bolshevik Revolution",
+      "incorrect_answers": ["French Revolution", "Industrial Revolution", "Cultural Revolution"]
+    },
+    {
+      "id": "his_061",
+      "difficulty": "hard",
+      "question": "What was the name of the battle where Harold II of England was defeated in 1066?",
+      "correct_answer": "Battle of Hastings",
+      "incorrect_answers": ["Battle of Stamford Bridge", "Battle of Bosworth Field", "Battle of Agincourt"]
+    },
+    {
+      "id": "his_062",
+      "difficulty": "hard",
+      "question": "Which dynasty ruled China during the construction of the Forbidden City?",
+      "correct_answer": "Ming Dynasty",
+      "incorrect_answers": ["Tang Dynasty", "Qing Dynasty", "Han Dynasty"]
+    },
+    {
+      "id": "his_063",
+      "difficulty": "hard",
+      "question": "Who was the Byzantine Emperor during the fall of Constantinople in 1453?",
+      "correct_answer": "Constantine XI",
+      "incorrect_answers": ["Justinian I", "Basil II", "Alexios I"]
+    },
+    {
+      "id": "his_064",
+      "difficulty": "hard",
+      "question": "Which treaty ended the Thirty Years War in 1648?",
+      "correct_answer": "Peace of Westphalia",
+      "incorrect_answers": ["Treaty of Utrecht", "Treaty of Versailles", "Treaty of Paris"]
+    },
+    {
+      "id": "his_065",
+      "difficulty": "hard",
+      "question": "Who was the first Mughal Emperor of India?",
+      "correct_answer": "Babur",
+      "incorrect_answers": ["Akbar", "Humayun", "Aurangzeb"]
+    },
+    {
+      "id": "his_066",
+      "difficulty": "hard",
+      "question": "What was the name of the operation that was the Allied invasion of Normandy in 1944?",
+      "correct_answer": "Operation Overlord",
+      "incorrect_answers": ["Operation Barbarossa", "Operation Market Garden", "Operation Torch"]
+    },
+    {
+      "id": "his_067",
+      "difficulty": "hard",
+      "question": "Which ancient battle in 480 BC saw 300 Spartans hold off a Persian army?",
+      "correct_answer": "Battle of Thermopylae",
+      "incorrect_answers": ["Battle of Marathon", "Battle of Salamis", "Battle of Plataea"]
+    },
+    {
+      "id": "his_068",
+      "difficulty": "hard",
+      "question": "Who was the last Ottoman Sultan?",
+      "correct_answer": "Mehmed VI",
+      "incorrect_answers": ["Suleiman the Magnificent", "Abdul Hamid II", "Selim III"]
+    },
+    {
+      "id": "his_069",
+      "difficulty": "hard",
+      "question": "What was the name of the economic policy introduced by Lenin in 1921?",
+      "correct_answer": "New Economic Policy (NEP)",
+      "incorrect_answers": ["Five-Year Plan", "War Communism", "Collectivization"]
+    },
+    {
+      "id": "his_070",
+      "difficulty": "hard",
+      "question": "Which ancient trade route connected China to the Mediterranean?",
+      "correct_answer": "Silk Road",
+      "incorrect_answers": ["Spice Route", "Amber Road", "Incense Route"]
+    },
+    {
+      "id": "his_071",
+      "difficulty": "hard",
+      "question": "In which year did the Meiji Restoration begin in Japan?",
+      "correct_answer": "1868",
+      "incorrect_answers": ["1853", "1889", "1905"]
+    },
+    {
+      "id": "his_072",
+      "difficulty": "hard",
+      "question": "Who was the first European to reach the coast of Brazil?",
+      "correct_answer": "Pedro Álvares Cabral",
+      "incorrect_answers": ["Vasco da Gama", "Amerigo Vespucci", "Christopher Columbus"]
+    },
+    {
+      "id": "his_073",
+      "difficulty": "hard",
+      "question": "What was the name of the conspiracy to assassinate Hitler in July 1944?",
+      "correct_answer": "Operation Valkyrie",
+      "incorrect_answers": ["Operation Foxley", "Operation Anthropoid", "Operation Flash"]
+    },
+    {
+      "id": "his_074",
+      "difficulty": "hard",
+      "question": "Which Roman Emperor first converted to Christianity?",
+      "correct_answer": "Constantine I",
+      "incorrect_answers": ["Theodosius I", "Diocletian", "Nero"]
+    },
+    {
+      "id": "his_075",
+      "difficulty": "hard",
+      "question": "What was the name of the Aztec capital city destroyed by Hernán Cortés?",
+      "correct_answer": "Tenochtitlan",
+      "incorrect_answers": ["Chichen Itza", "Tlatelolco", "Tula"]
+    },
+    {
+      "id": "his_076",
+      "difficulty": "hard",
+      "question": "Which country was formerly known as Persia?",
+      "correct_answer": "Iran",
+      "incorrect_answers": ["Iraq", "Turkey", "Afghanistan"]
+    },
+    {
+      "id": "his_077",
+      "difficulty": "hard",
+      "question": "Who was the first Secretary-General of the United Nations?",
+      "correct_answer": "Trygve Lie",
+      "incorrect_answers": ["Dag Hammarskjöld", "U Thant", "Kurt Waldheim"]
+    },
+    {
+      "id": "his_078",
+      "difficulty": "hard",
+      "question": "In which year was the League of Nations founded?",
+      "correct_answer": "1920",
+      "incorrect_answers": ["1918", "1919", "1922"]
+    },
+    {
+      "id": "his_079",
+      "difficulty": "hard",
+      "question": "What was the name of the first permanent English settlement in America?",
+      "correct_answer": "Jamestown",
+      "incorrect_answers": ["Plymouth", "Roanoke", "Boston"]
+    },
+    {
+      "id": "his_080",
+      "difficulty": "hard",
+      "question": "Which empire was defeated at the Battle of Gaugamela in 331 BC?",
+      "correct_answer": "Persian Empire",
+      "incorrect_answers": ["Egyptian Empire", "Babylonian Empire", "Macedonian Empire"]
+    },
+    {
+      "id": "his_081",
+      "difficulty": "hard",
+      "question": "Who was the founder of the Mongol Empire?",
+      "correct_answer": "Genghis Khan",
+      "incorrect_answers": ["Kublai Khan", "Timur", "Attila the Hun"]
+    },
+    {
+      "id": "his_082",
+      "difficulty": "hard",
+      "question": "What was the name of the first written law code in history?",
+      "correct_answer": "Code of Hammurabi",
+      "incorrect_answers": ["Twelve Tables", "Justinian Code", "Mosaic Law"]
+    },
+    {
+      "id": "his_083",
+      "difficulty": "hard",
+      "question": "In which year did the Rwandan genocide occur?",
+      "correct_answer": "1994",
+      "incorrect_answers": ["1991", "1996", "1998"]
+    },
+    {
+      "id": "his_084",
+      "difficulty": "hard",
+      "question": "Which civilization built Machu Picchu?",
+      "correct_answer": "Inca",
+      "incorrect_answers": ["Aztec", "Maya", "Tiwanaku"]
+    },
+    {
+      "id": "his_085",
+      "difficulty": "hard",
+      "question": "Who was the first woman to rule England as queen regnant?",
+      "correct_answer": "Mary I",
+      "incorrect_answers": ["Elizabeth I", "Lady Jane Grey", "Mary Queen of Scots"]
+    },
+    {
+      "id": "his_086",
+      "difficulty": "hard",
+      "question": "What was the name of the economic crisis that began in 1929?",
+      "correct_answer": "The Great Depression",
+      "incorrect_answers": ["The Panic of 1907", "The Long Depression", "Black Tuesday Crisis"]
+    },
+    {
+      "id": "his_087",
+      "difficulty": "hard",
+      "question": "Which country was formerly known as Abyssinia?",
+      "correct_answer": "Ethiopia",
+      "incorrect_answers": ["Eritrea", "Somalia", "Sudan"]
+    },
+    {
+      "id": "his_088",
+      "difficulty": "hard",
+      "question": "In which year did the Cuban Missile Crisis occur?",
+      "correct_answer": "1962",
+      "incorrect_answers": ["1960", "1964", "1958"]
+    },
+    {
+      "id": "his_089",
+      "difficulty": "hard",
+      "question": "Who was the first Caliph of Islam after Prophet Muhammad?",
+      "correct_answer": "Abu Bakr",
+      "incorrect_answers": ["Umar ibn al-Khattab", "Ali ibn Abi Talib", "Uthman ibn Affan"]
+    },
+    {
+      "id": "his_090",
+      "difficulty": "hard",
+      "question": "Which war ended with the Treaty of Portsmouth in 1905?",
+      "correct_answer": "Russo-Japanese War",
+      "incorrect_answers": ["Sino-Japanese War", "Boxer Rebellion", "First World War"]
+    },
+    {
+      "id": "his_091",
+      "difficulty": "hard",
+      "question": "What was the name of the uprising in Ireland against British rule in 1916?",
+      "correct_answer": "Easter Rising",
+      "incorrect_answers": ["Irish Rebellion", "Dublin Uprising", "Home Rule Crisis"]
+    },
+    {
+      "id": "his_092",
+      "difficulty": "hard",
+      "question": "Who was the Emperor of Japan during World War II?",
+      "correct_answer": "Hirohito",
+      "incorrect_answers": ["Taisho", "Meiji", "Akihito"]
+    },
+    {
+      "id": "his_093",
+      "difficulty": "hard",
+      "question": "Which ancient library was considered the largest in the ancient world?",
+      "correct_answer": "Library of Alexandria",
+      "incorrect_answers": ["Library of Pergamon", "Library of Nineveh", "Library of Carthage"]
+    },
+    {
+      "id": "his_094",
+      "difficulty": "hard",
+      "question": "In which year did apartheid officially end in South Africa?",
+      "correct_answer": "1994",
+      "incorrect_answers": ["1990", "1991", "1996"]
+    },
+    {
+      "id": "his_095",
+      "difficulty": "hard",
+      "question": "Who was the founder of the Ottoman Empire?",
+      "correct_answer": "Osman I",
+      "incorrect_answers": ["Mehmed II", "Suleiman I", "Bayezid I"]
+    },
+    {
+      "id": "his_096",
+      "difficulty": "hard",
+      "question": "What was the name of the first successful powered airplane flight in 1903?",
+      "correct_answer": "Wright Flyer",
+      "incorrect_answers": ["Spirit of St. Louis", "Kitty Hawk", "Flyer I"]
+    },
+    {
+      "id": "his_097",
+      "difficulty": "hard",
+      "question": "Which Chinese dynasty built the first version of the Great Wall?",
+      "correct_answer": "Qin Dynasty",
+      "incorrect_answers": ["Han Dynasty", "Ming Dynasty", "Tang Dynasty"]
+    },
+    {
+      "id": "his_098",
+      "difficulty": "hard",
+      "question": "In which year did the Space Shuttle Challenger disaster occur?",
+      "correct_answer": "1986",
+      "incorrect_answers": ["1983", "1988", "1984"]
+    },
+    {
+      "id": "his_099",
+      "difficulty": "hard",
+      "question": "Who was the first democratically elected President of Russia?",
+      "correct_answer": "Boris Yeltsin",
+      "incorrect_answers": ["Mikhail Gorbachev", "Vladimir Putin", "Dmitry Medvedev"]
+    },
+    {
+      "id": "his_100",
+      "difficulty": "hard",
+      "question": "Which battle in 1805 is considered Napoleon's greatest victory?",
+      "correct_answer": "Battle of Austerlitz",
+      "incorrect_answers": ["Battle of Waterloo", "Battle of Jena", "Battle of Wagram"]
+    }
+  ]
+}

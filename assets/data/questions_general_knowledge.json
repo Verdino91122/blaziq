@@ -1,0 +1,705 @@
+{
+  "category": "general_knowledge",
+  "questions": [
+    {
+      "id": "gk_001",
+      "difficulty": "easy",
+      "question": "How many days are in a week?",
+      "correct_answer": "7",
+      "incorrect_answers": ["5", "6", "8"]
+    },
+    {
+      "id": "gk_002",
+      "difficulty": "easy",
+      "question": "What color do you get when you mix red and blue?",
+      "correct_answer": "Purple",
+      "incorrect_answers": ["Green", "Orange", "Brown"]
+    },
+    {
+      "id": "gk_003",
+      "difficulty": "easy",
+      "question": "How many months are in a year?",
+      "correct_answer": "12",
+      "incorrect_answers": ["10", "11", "13"]
+    },
+    {
+      "id": "gk_004",
+      "difficulty": "easy",
+      "question": "What is the largest mammal in the world?",
+      "correct_answer": "Blue whale",
+      "incorrect_answers": ["Elephant", "Giraffe", "Hippopotamus"]
+    },
+    {
+      "id": "gk_005",
+      "difficulty": "easy",
+      "question": "Which sport uses a bat and a ball on a diamond-shaped field?",
+      "correct_answer": "Baseball",
+      "incorrect_answers": ["Cricket", "Softball", "Rounders"]
+    },
+    {
+      "id": "gk_006",
+      "difficulty": "easy",
+      "question": "What is the name of the toy cowboy in Toy Story?",
+      "correct_answer": "Woody",
+      "incorrect_answers": ["Buzz", "Rex", "Jesse"]
+    },
+    {
+      "id": "gk_007",
+      "difficulty": "easy",
+      "question": "How many sides does a hexagon have?",
+      "correct_answer": "6",
+      "incorrect_answers": ["5", "7", "8"]
+    },
+    {
+      "id": "gk_008",
+      "difficulty": "easy",
+      "question": "What is the currency of the United States?",
+      "correct_answer": "Dollar",
+      "incorrect_answers": ["Pound", "Euro", "Yen"]
+    },
+    {
+      "id": "gk_009",
+      "difficulty": "easy",
+      "question": "Which fruit is known for its high potassium content?",
+      "correct_answer": "Banana",
+      "incorrect_answers": ["Apple", "Orange", "Grape"]
+    },
+    {
+      "id": "gk_010",
+      "difficulty": "easy",
+      "question": "What is the tallest animal in the world?",
+      "correct_answer": "Giraffe",
+      "incorrect_answers": ["Elephant", "Ostrich", "Camel"]
+    },
+    {
+      "id": "gk_011",
+      "difficulty": "easy",
+      "question": "How many players are on a football (soccer) team?",
+      "correct_answer": "11",
+      "incorrect_answers": ["9", "10", "12"]
+    },
+    {
+      "id": "gk_012",
+      "difficulty": "easy",
+      "question": "What does HTML stand for?",
+      "correct_answer": "HyperText Markup Language",
+      "incorrect_answers": ["High Tech Modern Language", "HyperText Modern Links", "Home Tool Markup Language"]
+    },
+    {
+      "id": "gk_013",
+      "difficulty": "easy",
+      "question": "What is the name of the fairy tale character who slept for 100 years?",
+      "correct_answer": "Sleeping Beauty",
+      "incorrect_answers": ["Snow White", "Cinderella", "Rapunzel"]
+    },
+    {
+      "id": "gk_014",
+      "difficulty": "easy",
+      "question": "Which ocean is the saltiest?",
+      "correct_answer": "Atlantic Ocean",
+      "incorrect_answers": ["Pacific Ocean", "Indian Ocean", "Arctic Ocean"]
+    },
+    {
+      "id": "gk_015",
+      "difficulty": "easy",
+      "question": "What is the main ingredient in bread?",
+      "correct_answer": "Flour",
+      "incorrect_answers": ["Sugar", "Salt", "Yeast"]
+    },
+    {
+      "id": "gk_016",
+      "difficulty": "easy",
+      "question": "How many strings does a violin have?",
+      "correct_answer": "4",
+      "incorrect_answers": ["3", "5", "6"]
+    },
+    {
+      "id": "gk_017",
+      "difficulty": "easy",
+      "question": "What is the name of the superhero who wears a cape and has a bat symbol?",
+      "correct_answer": "Batman",
+      "incorrect_answers": ["Superman", "Spider-Man", "Iron Man"]
+    },
+    {
+      "id": "gk_018",
+      "difficulty": "easy",
+      "question": "Which planet is known as the Morning Star?",
+      "correct_answer": "Venus",
+      "incorrect_answers": ["Mars", "Jupiter", "Mercury"]
+    },
+    {
+      "id": "gk_019",
+      "difficulty": "easy",
+      "question": "What is the name of the longest river in South America?",
+      "correct_answer": "Amazon",
+      "incorrect_answers": ["Nile", "Orinoco", "Paraná"]
+    },
+    {
+      "id": "gk_020",
+      "difficulty": "easy",
+      "question": "How many colors are in a rainbow?",
+      "correct_answer": "7",
+      "incorrect_answers": ["5", "6", "8"]
+    },
+    {
+      "id": "gk_021",
+      "difficulty": "easy",
+      "question": "What animal is known as man's best friend?",
+      "correct_answer": "Dog",
+      "incorrect_answers": ["Cat", "Horse", "Rabbit"]
+    },
+    {
+      "id": "gk_022",
+      "difficulty": "easy",
+      "question": "Which company makes the iPhone?",
+      "correct_answer": "Apple",
+      "incorrect_answers": ["Samsung", "Google", "Microsoft"]
+    },
+    {
+      "id": "gk_023",
+      "difficulty": "easy",
+      "question": "What is the name of the world's largest social media platform?",
+      "correct_answer": "Facebook",
+      "incorrect_answers": ["Instagram", "Twitter", "TikTok"]
+    },
+    {
+      "id": "gk_024",
+      "difficulty": "easy",
+      "question": "What sport is played at Wimbledon?",
+      "correct_answer": "Tennis",
+      "incorrect_answers": ["Cricket", "Golf", "Badminton"]
+    },
+    {
+      "id": "gk_025",
+      "difficulty": "easy",
+      "question": "What is the name of the famous clock tower in London?",
+      "correct_answer": "Big Ben",
+      "incorrect_answers": ["Tower of London", "London Eye", "St Paul's Cathedral"]
+    },
+    {
+      "id": "gk_026",
+      "difficulty": "easy",
+      "question": "How many zeros are in one million?",
+      "correct_answer": "6",
+      "incorrect_answers": ["5", "7", "8"]
+    },
+    {
+      "id": "gk_027",
+      "difficulty": "easy",
+      "question": "What is the name of the ship that famously sank in 1912?",
+      "correct_answer": "Titanic",
+      "incorrect_answers": ["Lusitania", "Britannic", "Olympic"]
+    },
+    {
+      "id": "gk_028",
+      "difficulty": "easy",
+      "question": "Which country is famous for making sushi?",
+      "correct_answer": "Japan",
+      "incorrect_answers": ["China", "South Korea", "Thailand"]
+    },
+    {
+      "id": "gk_029",
+      "difficulty": "easy",
+      "question": "What is the name of the famous painting of a woman with a mysterious smile?",
+      "correct_answer": "Mona Lisa",
+      "incorrect_answers": ["The Last Supper", "Girl with a Pearl Earring", "The Starry Night"]
+    },
+    {
+      "id": "gk_030",
+      "difficulty": "easy",
+      "question": "Which number comes after 19?",
+      "correct_answer": "20",
+      "incorrect_answers": ["18", "21", "22"]
+    },
+    {
+      "id": "gk_031",
+      "difficulty": "medium",
+      "question": "What is the name of the process by which caterpillars transform into butterflies?",
+      "correct_answer": "Metamorphosis",
+      "incorrect_answers": ["Evolution", "Molting", "Hibernation"]
+    },
+    {
+      "id": "gk_032",
+      "difficulty": "medium",
+      "question": "Which company created the Android operating system?",
+      "correct_answer": "Google",
+      "incorrect_answers": ["Apple", "Microsoft", "Samsung"]
+    },
+    {
+      "id": "gk_033",
+      "difficulty": "medium",
+      "question": "What is the name of the largest planet in our solar system?",
+      "correct_answer": "Jupiter",
+      "incorrect_answers": ["Saturn", "Neptune", "Uranus"]
+    },
+    {
+      "id": "gk_034",
+      "difficulty": "medium",
+      "question": "How many bones are in the human hand?",
+      "correct_answer": "27",
+      "incorrect_answers": ["20", "25", "30"]
+    },
+    {
+      "id": "gk_035",
+      "difficulty": "medium",
+      "question": "What is the name of the currency used in Japan?",
+      "correct_answer": "Yen",
+      "incorrect_answers": ["Won", "Yuan", "Baht"]
+    },
+    {
+      "id": "gk_036",
+      "difficulty": "medium",
+      "question": "Which country has the most Nobel Prize winners?",
+      "correct_answer": "United States",
+      "incorrect_answers": ["United Kingdom", "Germany", "France"]
+    },
+    {
+      "id": "gk_037",
+      "difficulty": "medium",
+      "question": "What is the name of the world's bestselling video game console of all time?",
+      "correct_answer": "PlayStation 2",
+      "incorrect_answers": ["Nintendo DS", "Game Boy", "Xbox 360"]
+    },
+    {
+      "id": "gk_038",
+      "difficulty": "medium",
+      "question": "How many keys does a standard piano have?",
+      "correct_answer": "88",
+      "incorrect_answers": ["76", "84", "92"]
+    },
+    {
+      "id": "gk_039",
+      "difficulty": "medium",
+      "question": "What is the name of the world's highest waterfall?",
+      "correct_answer": "Angel Falls",
+      "incorrect_answers": ["Niagara Falls", "Victoria Falls", "Iguazu Falls"]
+    },
+    {
+      "id": "gk_040",
+      "difficulty": "medium",
+      "question": "Which element is represented by the symbol Fe?",
+      "correct_answer": "Iron",
+      "incorrect_answers": ["Fluorine", "Francium", "Fermium"]
+    },
+    {
+      "id": "gk_041",
+      "difficulty": "medium",
+      "question": "What is the name of the longest bone in the human body?",
+      "correct_answer": "Femur",
+      "incorrect_answers": ["Tibia", "Humerus", "Radius"]
+    },
+    {
+      "id": "gk_042",
+      "difficulty": "medium",
+      "question": "Which sport has the terms 'love', 'deuce' and 'advantage'?",
+      "correct_answer": "Tennis",
+      "incorrect_answers": ["Badminton", "Squash", "Ping Pong"]
+    },
+    {
+      "id": "gk_043",
+      "difficulty": "medium",
+      "question": "What is the name of the world's largest coral reef system?",
+      "correct_answer": "Great Barrier Reef",
+      "incorrect_answers": ["Mesoamerican Reef", "Red Sea Coral Reef", "Florida Reef"]
+    },
+    {
+      "id": "gk_044",
+      "difficulty": "medium",
+      "question": "Which country produces the most chocolate?",
+      "correct_answer": "Switzerland",
+      "incorrect_answers": ["Belgium", "Ghana", "Ivory Coast"]
+    },
+    {
+      "id": "gk_045",
+      "difficulty": "medium",
+      "question": "What is the name of the process by which plants make food using sunlight?",
+      "correct_answer": "Photosynthesis",
+      "incorrect_answers": ["Respiration", "Transpiration", "Germination"]
+    },
+    {
+      "id": "gk_046",
+      "difficulty": "medium",
+      "question": "Which country has the most pyramids?",
+      "correct_answer": "Sudan",
+      "incorrect_answers": ["Egypt", "Mexico", "Peru"]
+    },
+    {
+      "id": "gk_047",
+      "difficulty": "medium",
+      "question": "What is the name of the fictional school in Harry Potter?",
+      "correct_answer": "Hogwarts",
+      "incorrect_answers": ["Beauxbatons", "Durmstrang", "Ilvermorny"]
+    },
+    {
+      "id": "gk_048",
+      "difficulty": "medium",
+      "question": "How many time zones does Russia have?",
+      "correct_answer": "11",
+      "incorrect_answers": ["9", "13", "15"]
+    },
+    {
+      "id": "gk_049",
+      "difficulty": "medium",
+      "question": "What is the name of the world's most visited museum?",
+      "correct_answer": "The Louvre",
+      "incorrect_answers": ["The British Museum", "The Vatican Museums", "The Metropolitan Museum"]
+    },
+    {
+      "id": "gk_050",
+      "difficulty": "medium",
+      "question": "Which country is home to the most UNESCO World Heritage Sites?",
+      "correct_answer": "Italy",
+      "incorrect_answers": ["China", "Spain", "France"]
+    },
+    {
+      "id": "gk_051",
+      "difficulty": "medium",
+      "question": "What is the name of the world's fastest bird?",
+      "correct_answer": "Peregrine falcon",
+      "incorrect_answers": ["Golden eagle", "Ostrich", "Cheetah"]
+    },
+    {
+      "id": "gk_052",
+      "difficulty": "medium",
+      "question": "Which organ in the human body produces insulin?",
+      "correct_answer": "Pancreas",
+      "incorrect_answers": ["Liver", "Kidney", "Spleen"]
+    },
+    {
+      "id": "gk_053",
+      "difficulty": "medium",
+      "question": "What is the name of the world's most spoken language?",
+      "correct_answer": "Mandarin Chinese",
+      "incorrect_answers": ["English", "Spanish", "Hindi"]
+    },
+    {
+      "id": "gk_054",
+      "difficulty": "medium",
+      "question": "Which country invented the printing press?",
+      "correct_answer": "Germany",
+      "incorrect_answers": ["China", "England", "France"]
+    },
+    {
+      "id": "gk_055",
+      "difficulty": "medium",
+      "question": "What is the name of the currency used in Brazil?",
+      "correct_answer": "Real",
+      "incorrect_answers": ["Peso", "Dollar", "Bolivar"]
+    },
+    {
+      "id": "gk_056",
+      "difficulty": "medium",
+      "question": "How many players are on a basketball team on the court at one time?",
+      "correct_answer": "5",
+      "incorrect_answers": ["4", "6", "7"]
+    },
+    {
+      "id": "gk_057",
+      "difficulty": "medium",
+      "question": "What is the name of the world's largest hot desert?",
+      "correct_answer": "Sahara",
+      "incorrect_answers": ["Arabian Desert", "Gobi Desert", "Kalahari"]
+    },
+    {
+      "id": "gk_058",
+      "difficulty": "medium",
+      "question": "Which country is the largest producer of coffee in the world?",
+      "correct_answer": "Brazil",
+      "incorrect_answers": ["Colombia", "Ethiopia", "Vietnam"]
+    },
+    {
+      "id": "gk_059",
+      "difficulty": "medium",
+      "question": "What is the name of the sea between Saudi Arabia and Africa?",
+      "correct_answer": "Red Sea",
+      "incorrect_answers": ["Arabian Sea", "Persian Gulf", "Mediterranean Sea"]
+    },
+    {
+      "id": "gk_060",
+      "difficulty": "medium",
+      "question": "Which country has won the most Olympic gold medals overall?",
+      "correct_answer": "United States",
+      "incorrect_answers": ["Soviet Union", "China", "Germany"]
+    },
+    {
+      "id": "gk_061",
+      "difficulty": "hard",
+      "question": "What is the name of the phobia of the number 13?",
+      "correct_answer": "Triskaidekaphobia",
+      "incorrect_answers": ["Numerophobia", "Tridecaphobia", "Arithmophobia"]
+    },
+    {
+      "id": "gk_062",
+      "difficulty": "hard",
+      "question": "What is the Dunning-Kruger effect?",
+      "correct_answer": "People with limited knowledge overestimate their competence",
+      "incorrect_answers": ["Smart people underestimate others", "Experts always outperform beginners", "Knowledge leads to overconfidence"]
+    },
+    {
+      "id": "gk_063",
+      "difficulty": "hard",
+      "question": "Which country has the most billionaires per capita?",
+      "correct_answer": "Monaco",
+      "incorrect_answers": ["Switzerland", "USA", "Singapore"]
+    },
+    {
+      "id": "gk_064",
+      "difficulty": "hard",
+      "question": "What is the name of the longest running TV show in history?",
+      "correct_answer": "Guiding Light",
+      "incorrect_answers": ["The Simpsons", "Meet the Press", "60 Minutes"]
+    },
+    {
+      "id": "gk_065",
+      "difficulty": "hard",
+      "question": "What is the name of the world's oldest university?",
+      "correct_answer": "University of Bologna",
+      "incorrect_answers": ["University of Oxford", "Al-Azhar University", "University of Paris"]
+    },
+    {
+      "id": "gk_066",
+      "difficulty": "hard",
+      "question": "Which element has the highest melting point?",
+      "correct_answer": "Tungsten",
+      "incorrect_answers": ["Carbon", "Osmium", "Rhenium"]
+    },
+    {
+      "id": "gk_067",
+      "difficulty": "hard",
+      "question": "What is the name of the cognitive bias where people favor information that confirms their existing beliefs?",
+      "correct_answer": "Confirmation bias",
+      "incorrect_answers": ["Anchoring bias", "Availability heuristic", "Dunning-Kruger effect"]
+    },
+    {
+      "id": "gk_068",
+      "difficulty": "hard",
+      "question": "Which country has the most official languages?",
+      "correct_answer": "Zimbabwe",
+      "incorrect_answers": ["South Africa", "Switzerland", "India"]
+    },
+    {
+      "id": "gk_069",
+      "difficulty": "hard",
+      "question": "What is the name of the world's most expensive spice by weight?",
+      "correct_answer": "Saffron",
+      "incorrect_answers": ["Vanilla", "Cardamom", "Truffle"]
+    },
+    {
+      "id": "gk_070",
+      "difficulty": "hard",
+      "question": "What is the term for a word that reads the same forwards and backwards?",
+      "correct_answer": "Palindrome",
+      "incorrect_answers": ["Anagram", "Homonym", "Acronym"]
+    },
+    {
+      "id": "gk_071",
+      "difficulty": "hard",
+      "question": "Which ocean has the most islands?",
+      "correct_answer": "Pacific Ocean",
+      "incorrect_answers": ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean"]
+    },
+    {
+      "id": "gk_072",
+      "difficulty": "hard",
+      "question": "What is the name of the world's most traded commodity?",
+      "correct_answer": "Crude oil",
+      "incorrect_answers": ["Gold", "Coffee", "Natural gas"]
+    },
+    {
+      "id": "gk_073",
+      "difficulty": "hard",
+      "question": "Which country has the highest average IQ according to research studies?",
+      "correct_answer": "Japan",
+      "incorrect_answers": ["Singapore", "South Korea", "China"]
+    },
+    {
+      "id": "gk_074",
+      "difficulty": "hard",
+      "question": "What is the name of the effect where the Moon appears larger near the horizon?",
+      "correct_answer": "Moon illusion",
+      "incorrect_answers": ["Atmospheric refraction", "Parallax effect", "Optical magnification"]
+    },
+    {
+      "id": "gk_075",
+      "difficulty": "hard",
+      "question": "Which country has the most nuclear power plants?",
+      "correct_answer": "United States",
+      "incorrect_answers": ["France", "China", "Russia"]
+    },
+    {
+      "id": "gk_076",
+      "difficulty": "hard",
+      "question": "What is the name of the world's deepest lake?",
+      "correct_answer": "Lake Baikal",
+      "incorrect_answers": ["Caspian Sea", "Lake Tanganyika", "Lake Superior"]
+    },
+    {
+      "id": "gk_077",
+      "difficulty": "hard",
+      "question": "Which country consumes the most coffee per capita?",
+      "correct_answer": "Finland",
+      "incorrect_answers": ["Sweden", "Norway", "Netherlands"]
+    },
+    {
+      "id": "gk_078",
+      "difficulty": "hard",
+      "question": "What is the name of the world's largest democracy?",
+      "correct_answer": "India",
+      "incorrect_answers": ["United States", "Brazil", "Indonesia"]
+    },
+    {
+      "id": "gk_079",
+      "difficulty": "hard",
+      "question": "Which language has the most words?",
+      "correct_answer": "English",
+      "incorrect_answers": ["Mandarin Chinese", "German", "Arabic"]
+    },
+    {
+      "id": "gk_080",
+      "difficulty": "hard",
+      "question": "What is the name of the world's oldest written recipe?",
+      "correct_answer": "Beer recipe from ancient Sumer",
+      "incorrect_answers": ["Egyptian bread recipe", "Roman garum recipe", "Chinese tea recipe"]
+    },
+    {
+      "id": "gk_081",
+      "difficulty": "hard",
+      "question": "Which country has the longest life expectancy?",
+      "correct_answer": "Japan",
+      "incorrect_answers": ["Switzerland", "Singapore", "Australia"]
+    },
+    {
+      "id": "gk_082",
+      "difficulty": "hard",
+      "question": "What is the name of the world's most translated book?",
+      "correct_answer": "The Bible",
+      "incorrect_answers": ["The Quran", "Don Quixote", "The Little Prince"]
+    },
+    {
+      "id": "gk_083",
+      "difficulty": "hard",
+      "question": "Which country has the most coastline in the world?",
+      "correct_answer": "Canada",
+      "incorrect_answers": ["Russia", "Norway", "Indonesia"]
+    },
+    {
+      "id": "gk_084",
+      "difficulty": "hard",
+      "question": "What is the name of the phenomenon where a group makes riskier decisions than individuals?",
+      "correct_answer": "Risky shift",
+      "incorrect_answers": ["Groupthink", "Social loafing", "Bystander effect"]
+    },
+    {
+      "id": "gk_085",
+      "difficulty": "hard",
+      "question": "Which company has the highest market capitalization in history?",
+      "correct_answer": "Apple",
+      "incorrect_answers": ["Microsoft", "Saudi Aramco", "Amazon"]
+    },
+    {
+      "id": "gk_086",
+      "difficulty": "hard",
+      "question": "What is the name of the world's busiest airport by passenger traffic?",
+      "correct_answer": "Hartsfield-Jackson Atlanta International Airport",
+      "incorrect_answers": ["Dubai International Airport", "Beijing Capital Airport", "Los Angeles International Airport"]
+    },
+    {
+      "id": "gk_087",
+      "difficulty": "hard",
+      "question": "Which country has the most internet users?",
+      "correct_answer": "China",
+      "incorrect_answers": ["India", "United States", "Indonesia"]
+    },
+    {
+      "id": "gk_088",
+      "difficulty": "hard",
+      "question": "What is the name of the world's largest flower?",
+      "correct_answer": "Rafflesia arnoldii",
+      "incorrect_answers": ["Titan arum", "Sunflower", "Amazon water lily"]
+    },
+    {
+      "id": "gk_089",
+      "difficulty": "hard",
+      "question": "Which country has the most natural lakes in the world?",
+      "correct_answer": "Canada",
+      "incorrect_answers": ["Russia", "Finland", "USA"]
+    },
+    {
+      "id": "gk_090",
+      "difficulty": "hard",
+      "question": "What is the name of the world's oldest continuously inhabited city?",
+      "correct_answer": "Damascus",
+      "incorrect_answers": ["Jericho", "Athens", "Jerusalem"]
+    },
+    {
+      "id": "gk_091",
+      "difficulty": "hard",
+      "question": "Which country has the highest suicide rate in the world?",
+      "correct_answer": "Lesotho",
+      "incorrect_answers": ["Russia", "Japan", "South Korea"]
+    },
+    {
+      "id": "gk_092",
+      "difficulty": "hard",
+      "question": "What is the name of the world's largest religion by number of followers?",
+      "correct_answer": "Christianity",
+      "incorrect_answers": ["Islam", "Hinduism", "Buddhism"]
+    },
+    {
+      "id": "gk_093",
+      "difficulty": "hard",
+      "question": "Which country has won the most FIFA World Cups?",
+      "correct_answer": "Brazil",
+      "incorrect_answers": ["Germany", "Italy", "Argentina"]
+    },
+    {
+      "id": "gk_094",
+      "difficulty": "hard",
+      "question": "What is the name of the world's most expensive painting ever sold?",
+      "correct_answer": "Salvator Mundi",
+      "incorrect_answers": ["Mona Lisa", "The Card Players", "Interchange"]
+    },
+    {
+      "id": "gk_095",
+      "difficulty": "hard",
+      "question": "Which country has the most volcanoes?",
+      "correct_answer": "Indonesia",
+      "incorrect_answers": ["Japan", "Philippines", "USA"]
+    },
+    {
+      "id": "gk_096",
+      "difficulty": "hard",
+      "question": "What is the name of the world's largest stadium by capacity?",
+      "correct_answer": "Rungrado 1st of May Stadium",
+      "incorrect_answers": ["Melbourne Cricket Ground", "Camp Nou", "Narendra Modi Stadium"]
+    },
+    {
+      "id": "gk_097",
+      "difficulty": "hard",
+      "question": "Which country has the highest GDP per capita?",
+      "correct_answer": "Luxembourg",
+      "incorrect_answers": ["Switzerland", "Norway", "Singapore"]
+    },
+    {
+      "id": "gk_098",
+      "difficulty": "hard",
+      "question": "What is the name of the world's most venomous snake?",
+      "correct_answer": "Inland taipan",
+      "incorrect_answers": ["Black mamba", "King cobra", "Belcher's sea snake"]
+    },
+    {
+      "id": "gk_099",
+      "difficulty": "hard",
+      "question": "Which country has the most languages spoken within its borders?",
+      "correct_answer": "Papua New Guinea",
+      "incorrect_answers": ["India", "Nigeria", "Indonesia"]
+    },
+    {
+      "id": "gk_100",
+      "difficulty": "hard",
+      "question": "What is the name of the phenomenon where prices rise and currency value falls?",
+      "correct_answer": "Inflation",
+      "incorrect_answers": ["Deflation", "Stagflation", "Recession"]
+    }
+  ]
+}

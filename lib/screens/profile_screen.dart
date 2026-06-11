@@ -44,15 +44,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, snapshot) {
         final user = snapshot.data;
         return Scaffold(
-          backgroundColor: AppTheme.cloudWhite,
-          body: SafeArea(
-            child: user == null || user.isAnonymous
-                ? _AnonView(
-                    user: user,
-                    loading: _loading,
-                    onSignIn: _handleSignIn,
-                  )
-                : _SignedInView(user: user, onSignOut: _handleSignOut),
+          backgroundColor: Colors.transparent,
+          body: SizedBox.expand(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: AppTheme.backgroundGradient,
+              ),
+              child: SafeArea(
+              child: user == null || user.isAnonymous
+                  ? _AnonView(
+                      user: user,
+                      loading: _loading,
+                      onSignIn: _handleSignIn,
+                    )
+                  : _SignedInView(user: user, onSignOut: _handleSignOut),
+            ),
+          ),
           ),
         );
       },

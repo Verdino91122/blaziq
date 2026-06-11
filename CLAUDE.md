@@ -32,7 +32,7 @@ Target platforms: iOS and Android (primary), Web (secondary)
 | skyBlue          | #DBEAFE   | Blue tint background (correct answer state)    |
 | blazeOrange      | #F97316   | Streak indicator, wrong answers, urgent timer  |
 | softOrange       | #FFEDD5   | Orange tint background (streak pill bg)        |
-| ink              | #1E1B4B   | Primary text, nav bar background               |
+| ink              | #1E1B4B   | Primary text                                   |
 | steel            | #6B7280   | Muted/secondary text, icons                    |
 
 Backward-compatible AppTheme aliases (screens may use these):
@@ -66,7 +66,7 @@ Google brand colors and leaderboard avatar palette are unchanged.
 
 Corner radius: 12–16px rounded cards (16px question card, 14–16px buttons, 20px mode cards)
 Status bar icons: dark (Brightness.dark) — app has light background
-Navigation bar: ink (#1E1B4B) background, electricBlue active icon/circle
+Navigation bar: floating 5-circle pill, white fill, purple drop shadow; electricBlue 44px circle behind selected icon; icons white (selected) / black (unselected); 250ms easeInOut fade
 
 ## Brand Identity
 - App name: Blaziq
@@ -93,9 +93,12 @@ Note: the /designs images reflect the original dark-theme mockups; the live app 
 4. Shop
 5. Settings
 
-Bottom nav bar: ink (#1E1B4B) background, 64px height, Material icons.
-Selected home tab: electricBlue filled circle, ink icon inside.
-Selected non-home tab: electricBlue icon + label. Unselected: steel icon + label.
+Bottom nav bar: floating 262×54px pill of 5 merged circles (54px diameter, 2px overlap), white fill.
+Drop shadow: BoxShadow(color: Color(0x4D4841C1), blurRadius: 8.6, offset: Offset(0,0)).
+Positioned: centered horizontally, sits above system nav area (MediaQuery.padding.bottom gap below it).
+Selected tab: 44×44px electricBlue circle (#2563EB) behind a white icon (20px).
+Unselected tab: black icon (20px), no circle. Fade animation 250ms easeInOut on selection change.
+No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in lib/main.dart.
 
 ## Screen Details
 
@@ -401,7 +404,7 @@ lib/
   - ✅ Three-currency scoring system: score, XP (with level-up), coins (with daily bonus)
   - ✅ Home header bar: avatar + coins + XP bar, live from Firestore
   - ✅ Results screen saves to Firestore after every game
-  - ✅ Bottom nav bar: Material icons, 64px, ink background, electricBlue selected state
+  - ✅ Bottom nav bar: floating 5-circle pill (262×54px), white, purple drop shadow, electricBlue selected circle, fade animation
 - Phase 4: Solo Leaderboard — COMPLETE
   - ✅ leaderboard Firestore collection — written by saveGameResult() after every game
   - ✅ effectiveBest = max(score, currentBest) seeds existing users immediately
@@ -437,11 +440,87 @@ lib/
        AutoSizeText question card, 2×2 answer grid with asymmetric corner radii + scale press
        All screens: light backgrounds, profile gradient removed, status bar dark icons
 
+- Phase 6: Friend Mode — COMPLETE
+  - ✅ Question JSON assets: assets/data/ — 4 categories, 100 questions each:
+       questions_science.json · questions_geography.json · questions_history.json · questions_general_knowledge.json
+       Fields: id, difficulty, question, correct_answer, incorrect_answers
+       Order: shuffled within each difficulty group (easy → medium → hard preserved)
+  - ✅ room_service.dart — full Firestore room lifecycle + game logic:
+       RoomService.createRoom / joinRoom / setReady / setUnready / updateCategory
+       pressBuzzer (first-write-wins; works for both 'buzzer' and 'sudden_death' phases)
+       submitAnswer (answering → transition; inherited → transition; sudden_death correct → finish,
+         wrong → other player wins)
+       nextQuestion (pre-loads asset JSON outside transaction)
+       _endGameWithTieCheck → sudden_death or endGame
+       endGame / updateHeartbeat / leaveRoom / saveFriendGameResult
+  - ✅ friend_mode_screen.dart — entry screen with HOST / JOIN buttons
+  - ✅ host_screen.dart — 4-category picker (Science 🔬 / Geography 🌍 / History 📜 / General Knowledge 🧠) in 2×2 grid + CREATE ROOM
+  - ✅ join_screen.dart — room code entry with UpperCaseTextFormatter + BLAZIQ- prefix auto-add
+  - ✅ lobby_screen.dart — waiting room: room code banner, player slots, category chips,
+       READY TO START / LEAVE ROOM, 3-s countdown overlay, PopScope back-button guard
+  - ✅ friend_game_screen.dart — full game screen:
+       3-min game timer, per-phase answer timers (3 s answering, 10 s inherited / sudden_death)
+       Buzzer button: pulsing red glow when active, green on win, grey/locked on loss
+       Phase state machine: buzzer → answering → inherited → transition → sudden_death → finished
+       Get-ready 3-s overlay between questions (host calls nextQuestion after countdown)
+       Sudden Death banner overlay when tied scores trigger sudden_death
+       Disconnection detection via heartbeat timestamps + 20 s countdown to auto-end
+       Answer grid: 2×2, asymmetric BorderRadius.only, greyed/active/correct/wrong/crossed states
+       Score cards: live scores side by side, winning player highlighted in electricBlue
+       Results screen with XP + coins rewards; HOME button returns to root
+  - ✅ home_screen.dart — Friend card (index 1) now tappable → FriendModeScreen;
+       COMING SOON ribbon removed; PLAY button added; Online card (index 2) still ribboned
+
+### Firestore rooms collection (Phase 6)
+  Document: {roomId}  (e.g. BLAZIQ-4829)
+    - hostUid / hostName / hostAvatar / hostLevel / hostScore / hostCorrect / hostReady / hostConnected
+    - guestUid / guestName / guestAvatar / guestLevel / guestScore / guestCorrect / guestReady / guestConnected
+    - category: 'science' | 'geography' | 'history' | 'general_knowledge'
+    - status: 'waiting' | 'lobby' | 'countdown' | 'playing' | 'finished'
+    - currentQuestionIndex: number
+    - currentQuestion: { id, difficulty, question, correctAnswer, shuffledAnswers[] }
+    - phase: 'buzzer' | 'answering' | 'inherited' | 'transition' | 'sudden_death' | 'finished'
+    - buzzerWinner: uid | null
+    - buzzerWrongAnswer: string | null
+    - winnerId: uid | null
+    - quitUid: uid | null  (set when a player confirms quit mid-game; cleared on resetForRematch)
+    - hostGamesWon / guestGamesWon: number (cumulative session wins)
+    - hostTotalScore / guestTotalScore: number (cumulative session scores)
+    - totalQuestions: 20 (default)
+    - createdAt: timestamp
+
+### Friend Mode scoring (Phase 6)
+  Buzzer winner correct: +3 pts · wrong: -1 pt → inherited phase
+  Inheritor correct: +2 pts · wrong/timeout: 0 pts → transition phase
+  Sudden death: correct → game over (winner) · wrong → other player wins automatically
+  XP = correctAnswers × 8 + (winner ? 20 : 0)
+  Coins = correctAnswers × 2 + (winner ? 15 : 0)
+
+### Friend Mode UX details (Phase 6 polish)
+  - Difficulty pill hidden from game screen — category label shown only
+  - Answer buttons show idle (white/normal) style during buzzer phase — non-tappable, not greyed
+  - Correct answer NOT revealed when buzzer winner answers wrong — only revealed as a 1-second
+    flash at end of inherited phase, before the "Get ready" overlay
+  - Floating score animations: +3/+2/−1 text flies upward toward the scorer's card (800ms,
+    scale pop 1.0→1.4→1.0, fade out); plays before Get Ready countdown, not simultaneously
+  - Buzzer shake animation: ±3px rapid left-right shake while waiting for press; stops on press
+  - Buzzer countdown: once winner presses, countdown in tenths of second shown inside buzzer
+    circle (electricBlue, 28sp bold); loser sees grey lock icon + "Too slow!" label below
+  - Host badge: blazeOrange pill at top-right corner of player card in lobby (not on avatar)
+  - Nickname picker: anonymous users without a valid username see a dialog before accessing
+    friend mode; username saved to Firestore users/{uid}.username
+  - Quitter flow: confirming quit calls quitGame() then shows _QuitResultsScreen with
+    "GO TO LOBBY" (calls resetForRematch → LobbyScreen) and "GO HOME" buttons
+  - Opponent sees quit overlay: "[Name] has left the game. You win!" with gold pulse animation;
+    auto-navigates to results after 3 seconds as winner
+  - Session scoreboard in lobby: shown after ≥1 game completed; displays wins + cumulative
+    score per player; persisted in hostGamesWon/guestGamesWon/hostTotalScore/guestTotalScore
+  - Results screen has 3 buttons: PLAY AGAIN / LEAVE TO LOBBY (both → lobby) / HOME
+
 ### Next
-- Phase 5: Google Play Store submission
+- Phase 7: Online matchmaking (random opponent + online leaderboard)
 
 ### Pending
-- Phase 6: Friend mode (room codes + real-time Firestore)
 - Phase 7: Online matchmaking (random opponent + online leaderboard)
 - Phase 8: Kahoot mode (host + join + manual questions)
 - Phase 9: Store + in-app purchases

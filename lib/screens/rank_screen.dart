@@ -66,27 +66,34 @@ class _RankScreenState extends State<RankScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.arenaBlack,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Text('LEADERBOARD', style: AppTheme.screenTitle),
-            const SizedBox(height: 20),
-            _FilterTabs(
-              filters: _filters,
-              selected: _filterIndex,
-              onSelect: (i) => setState(() => _filterIndex = i),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: _filterIndex == 2
-                  ? const _ComingSoonView()
-                  : _LeaderboardBody(filterIndex: _filterIndex),
-            ),
-          ],
+      backgroundColor: Colors.transparent,
+      body: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.backgroundGradient,
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+              const SizedBox(height: 20),
+              Text('LEADERBOARD', style: AppTheme.screenTitle),
+              const SizedBox(height: 20),
+              _FilterTabs(
+                filters: _filters,
+                selected: _filterIndex,
+                onSelect: (i) => setState(() => _filterIndex = i),
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: _filterIndex == 2
+                    ? const _ComingSoonView()
+                    : _LeaderboardBody(filterIndex: _filterIndex),
+              ),
+            ],
+          ),
         ),
       ),
+    ),
     );
   }
 }
@@ -190,7 +197,7 @@ class _LeaderboardBody extends StatelessWidget {
             const Divider(color: AppTheme.divider, height: 1),
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
                 itemCount: rest.length,
                 itemBuilder: (context, i) => _PlayerRow(
                   entry: rest[i],

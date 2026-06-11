@@ -19,7 +19,12 @@
       "Bash(dart run *)",
       "Bash(python3 -c ' *)",
       "Bash(flutter build *)",
-      "Bash(flutter --version)"
+      "Bash(flutter --version)",
+      "Bash(cp \"c:/Users/user/Documents/questions_science.json\" \"c:/Users/user/Documents/Blaziq/assets/data/questions_science.json\")",
+      "Bash(cp \"c:/Users/user/Documents/questions_geography.json\" \"c:/Users/user/Documents/Blaziq/assets/data/questions_geography.json\")",
+      "Bash(cp \"c:/Users/user/Documents/questions_general_knowledge.json\" \"c:/Users/user/Documents/Blaziq/assets/data/questions_general_knowledge.json\")",
+      "Bash(cp \"c:/Users/user/Documents/questions_history.json\" \"c:/Users/user/Documents/Blaziq/assets/data/questions_history.json\")",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

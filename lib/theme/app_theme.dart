@@ -36,6 +36,16 @@ class AppTheme {
   /// Muted / secondary text
   static const Color steel = Color(0xFF6B7280);
 
+  // ── Background gradient ───────────────────────────────────────────────────
+
+  static const Color gradientLeft = Color(0xFFCFEDDB);
+  static const Color gradientRight = Color(0xFFDEEACD);
+  static const LinearGradient backgroundGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [Color(0xFFCFEDDB), Color(0xFFDEEACD)],
+  );
+
   // ── Backward-compatible aliases (used throughout existing screens) ────────
 
   /// = cloudWhite

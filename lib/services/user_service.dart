@@ -3,6 +3,7 @@ import 'dart:ui' show PlatformDispatcher;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 
 class UserService {
@@ -101,9 +102,14 @@ class UserService {
   /// and awards the 200-coin linking reward.
   static Future<void> upgradeToGoogle(User user) async {
     final ref = _db.collection('users').doc(user.uid);
+    final email = user.email ?? '';
+    final displayName = user.displayName;
+    final username = (displayName != null && displayName.isNotEmpty)
+        ? displayName
+        : (email.isNotEmpty ? email.split('@')[0] : 'Player');
     await ref.update({
-      'username': user.displayName ?? 'Player',
-      'email': user.email ?? '',
+      'username': username,
+      'email': email,
       'isAnonymous': false,
       'coins': FieldValue.increment(200),
     });
@@ -156,6 +162,15 @@ class UserService {
   static Future<Map<String, dynamic>?> getUserData(String uid) async {
     final doc = await _db.collection('users').doc(uid).get();
     return doc.data();
+  }
+
+  /// Updates the username field for a user.
+  /// Uses set+merge so it works even if the doc hasn't been created yet.
+  static Future<void> updateUsername(String uid, String username) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .set({'username': username}, SetOptions(merge: true));
   }
 
   // ── Level / XP math ───────────────────────────────────────────────────────
@@ -306,5 +321,60 @@ class UserService {
         .collection('leaderboard')
         .orderBy('score', descending: true)
         .snapshots();
+  }
+
+  // ── Username repair ───────────────────────────────────────────────────────
+
+  /// Fixes a Google user's username if it was stored as 'Player' because
+  /// Firebase Auth hadn't propagated the display name at sign-in time.
+  /// Calls [User.reload] when displayName is null, then falls back to the
+  /// email prefix so 'Player' is never kept as a permanent username.
+  /// Updates the leaderboard entry too if it also shows 'Player'.
+  /// Fire-and-forget safe — all errors are caught internally.
+  static Future<void> fixPlayerUsername(String uid) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.isAnonymous) return;
+
+      final ref = _db.collection('users').doc(uid);
+      final doc = await ref.get();
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+      final currentUsername = (data['username'] as String?) ?? '';
+      if (currentUsername.isNotEmpty && currentUsername != 'Player') return;
+
+      // displayName can be null on launch if the token hasn't propagated yet.
+      String? displayName = user.displayName;
+      if (displayName == null || displayName.isEmpty) {
+        await user.reload();
+        displayName = FirebaseAuth.instance.currentUser?.displayName;
+      }
+
+      final email = user.email ?? (data['email'] as String?) ?? '';
+      final chosen = (displayName != null && displayName.isNotEmpty)
+          ? displayName
+          : (email.isNotEmpty ? email.split('@')[0] : null);
+
+      debugPrint('[Blaziq] fixPlayerUsername: '
+          'current="$currentUsername" '
+          'authDisplayName="$displayName" '
+          'email="$email" '
+          'chosen="${chosen ?? 'none — skipping'}"');
+
+      if (chosen == null || chosen.isEmpty) return;
+
+      await ref.update({'username': chosen});
+
+      // Keep the leaderboard username in sync.
+      final lbRef = _db.collection('leaderboard').doc(uid);
+      final lbDoc = await lbRef.get();
+      if (lbDoc.exists &&
+          ((lbDoc.data()?['username'] as String?) ?? '') == 'Player') {
+        await lbRef.update({'username': chosen});
+      }
+    } catch (e) {
+      debugPrint('[Blaziq] fixPlayerUsername error: $e');
+    }
   }
 }

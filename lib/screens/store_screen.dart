@@ -11,8 +11,13 @@ class StoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.arenaBlack,
-      body: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.backgroundGradient,
+          ),
+          child: SafeArea(
         child: Column(
           children: [
             const _ShopHeader(),
@@ -51,6 +56,8 @@ class StoreScreen extends StatelessWidget {
           ],
         ),
       ),
+    ),
+    ),
     );
   }
 }
