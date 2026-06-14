@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/display_name_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 
@@ -152,23 +155,22 @@ class _AnonView extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Username + stats from Firestore (if signed in anonymously)
+          // Display name + stats from Firestore
           if (user != null)
             StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: UserService.userStream(user!.uid),
               builder: (context, snap) {
                 final data = snap.data?.data();
-                // Fall back to UID-derived name when doc doesn't exist yet
-                // (new anonymous user who hasn't completed a game).
-                final username =
+                final displayName =
+                    (data?['displayName'] as String?) ??
                     (data?['username'] as String?) ??
                     'Guest_${user!.uid.substring(0, 6)}';
                 return Column(
                   children: [
-                    Text(
-                      username,
-                      style: AppTheme.subheading,
-                      textAlign: TextAlign.center,
+                    _NameRow(
+                      uid: user!.uid,
+                      displayName: displayName,
+                      data: data,
                     ),
                     const SizedBox(height: 4),
                     Text('Guest account', style: AppTheme.bodyMuted),
@@ -338,6 +340,10 @@ class _SignedInView extends StatelessWidget {
       stream: UserService.userStream(user.uid),
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
+        final displayName = (data?['displayName'] as String?) ??
+            (data?['username'] as String?) ??
+            user.displayName ??
+            'Player';
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
@@ -345,11 +351,7 @@ class _SignedInView extends StatelessWidget {
               const SizedBox(height: 40),
               _Avatar(user: user),
               const SizedBox(height: 16),
-              Text(
-                (data?['username'] as String?) ?? user.displayName ?? 'Player',
-                style: AppTheme.subheading,
-                textAlign: TextAlign.center,
-              ),
+              _NameRow(uid: user.uid, displayName: displayName, data: data),
               const SizedBox(height: 4),
               Text(user.email ?? '', style: AppTheme.bodyMuted),
               const SizedBox(height: 32),
@@ -380,6 +382,457 @@ class _SignedInView extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+// ── Name row with edit button ─────────────────────────────────────────────────
+
+class _NameRow extends StatelessWidget {
+  final String uid;
+  final String displayName;
+  final Map<String, dynamic>? data;
+
+  const _NameRow({
+    required this.uid,
+    required this.displayName,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            displayName,
+            style: AppTheme.subheading,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => _openChangeNameSheet(context),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: AppTheme.softGrey,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.edit_rounded,
+              size: 16,
+              color: AppTheme.steel,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openChangeNameSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ChangeNameSheet(
+        uid: uid,
+        currentDisplayName: displayName,
+      ),
+    );
+  }
+}
+
+// ── Change name bottom sheet ──────────────────────────────────────────────────
+
+class _ChangeNameSheet extends StatefulWidget {
+  final String uid;
+  final String currentDisplayName;
+
+  const _ChangeNameSheet({
+    required this.uid,
+    required this.currentDisplayName,
+  });
+
+  @override
+  State<_ChangeNameSheet> createState() => _ChangeNameSheetState();
+}
+
+class _ChangeNameSheetState extends State<_ChangeNameSheet> {
+  late final TextEditingController _ctrl;
+  Timer? _debounce;
+
+  bool _loadingCooldown = true;
+  bool _canChange = true;
+  int _daysLeft = 0;
+
+  String? _validationError;
+  bool _checking = false;
+  bool? _isAvailable;
+  List<String> _suggestions = [];
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.currentDisplayName);
+    _ctrl.addListener(_onChanged);
+    _checkCooldown();
+  }
+
+  Future<void> _checkCooldown() async {
+    final canChange = await DisplayNameService.canChangeName(widget.uid);
+    if (!mounted) return;
+
+    int daysLeft = 0;
+    if (!canChange) {
+      final doc = await UserService.getUserData(widget.uid);
+      final last = doc?['lastNameChange'] as Timestamp?;
+      if (last != null) {
+        daysLeft = DisplayNameService.daysUntilCanChange(last);
+      }
+    }
+    setState(() {
+      _canChange = canChange;
+      _daysLeft = daysLeft;
+      _loadingCooldown = false;
+    });
+
+    // Pre-check availability for the prefilled name if cooldown allows
+    if (canChange && widget.currentDisplayName.isNotEmpty) {
+      _triggerCheck(widget.currentDisplayName);
+    }
+  }
+
+  void _onChanged() {
+    if (!_canChange) return;
+    final text = _ctrl.text;
+    final err = DisplayNameService.validateDisplayName(text);
+    setState(() {
+      _validationError = err;
+      _isAvailable = null;
+      _checking = false;
+      _suggestions = [];
+    });
+    if (err != null) {
+      _debounce?.cancel();
+      return;
+    }
+    _debounce?.cancel();
+    setState(() => _checking = true);
+    _debounce = Timer(
+      const Duration(milliseconds: 600),
+      () => _triggerCheck(text),
+    );
+  }
+
+  Future<void> _triggerCheck(String name) async {
+    if (!mounted) return;
+    final available = await DisplayNameService.isAvailable(widget.uid, name);
+    if (!mounted || _ctrl.text != name) return;
+    setState(() {
+      _isAvailable = available;
+      _checking = false;
+      _suggestions =
+          available ? [] : DisplayNameService.generateSuggestions(name);
+    });
+  }
+
+  Future<void> _save() async {
+    final newName = _ctrl.text.trim();
+    if (DisplayNameService.validateDisplayName(newName) != null) return;
+    if (_isAvailable != true) return;
+    if (newName == widget.currentDisplayName) {
+      Navigator.pop(context);
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    await DisplayNameService.releaseName(widget.uid, widget.currentDisplayName);
+    final result = await DisplayNameService.claimName(widget.uid, newName);
+    if (!mounted) return;
+
+    if (result == ClaimResult.success) {
+      try {
+        await UserService.syncLeaderboardDisplayName(widget.uid, newName);
+      } catch (_) {}
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Name changed to $newName', style: AppTheme.snackText),
+          backgroundColor: AppTheme.cardSurface,
+        ),
+      );
+    } else if (result == ClaimResult.taken) {
+      setState(() {
+        _isAvailable = false;
+        _suggestions = DisplayNameService.generateSuggestions(newName);
+        _saving = false;
+      });
+    } else {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Something went wrong. Please try again.')),
+      );
+    }
+  }
+
+  void _fillSuggestion(String name) {
+    _ctrl.text = name;
+    _ctrl.selection =
+        TextSelection.fromPosition(TextPosition(offset: name.length));
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  bool get _canSave =>
+      _canChange &&
+      _validationError == null &&
+      _isAvailable == true &&
+      _ctrl.text.isNotEmpty &&
+      !_saving;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
+      decoration: BoxDecoration(
+        color: AppTheme.cloudWhite,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: _loadingCooldown
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(color: AppTheme.electricBlue),
+              ),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.deepGrey,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                Text(
+                  'CHANGE DISPLAY NAME',
+                  style: AppTheme.sectionHeader.copyWith(
+                    fontSize: 13,
+                    letterSpacing: 2,
+                    color: AppTheme.ink,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+
+                if (!_canChange) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.softOrange,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppTheme.blazeOrange.withAlpha(100)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.timer_rounded,
+                            color: AppTheme.blazeOrange, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'You can change your name in $_daysLeft day${_daysLeft == 1 ? '' : 's'}',
+                            style: AppTheme.caption.copyWith(
+                              color: AppTheme.blazeOrange,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Text field
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: !_canChange
+                          ? AppTheme.deepGrey
+                          : _validationError != null
+                              ? AppTheme.blazeOrange
+                              : _isAvailable == true
+                                  ? AppTheme.electricBlue
+                                  : AppTheme.deepGrey,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _ctrl,
+                    enabled: _canChange,
+                    autofocus: _canChange,
+                    maxLength: 20,
+                    style: AppTheme.rowLabel.copyWith(fontSize: 16),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      counterText: '',
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      suffixIcon: _canChange ? _suffixIcon() : null,
+                    ),
+                  ),
+                ),
+
+                if (_canChange) ...[
+                  const SizedBox(height: 6),
+                  _statusRow(),
+                  if (_validationError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        _validationError!,
+                        style: AppTheme.caption.copyWith(
+                          color: AppTheme.blazeOrange,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  if (_suggestions.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _suggestions
+                          .map((s) => GestureDetector(
+                                onTap: () => _fillSuggestion(s),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.softGrey,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border:
+                                        Border.all(color: AppTheme.deepGrey),
+                                  ),
+                                  child: Text(
+                                    s,
+                                    style: AppTheme.caption.copyWith(
+                                      color: AppTheme.electricBlue,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ],
+
+                const SizedBox(height: 20),
+
+                // Save button
+                GestureDetector(
+                  onTap: _canSave ? _save : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: _canSave
+                          ? AppTheme.electricBlue
+                          : AppTheme.deepGrey,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: _saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text('SAVE CHANGES', style: AppTheme.buttonLabel),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _suffixIcon() {
+    if (_checking) {
+      return const Padding(
+        padding: EdgeInsets.all(13),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppTheme.electricBlue,
+          ),
+        ),
+      );
+    }
+    if (_isAvailable == true) {
+      return const Icon(Icons.check_circle_rounded,
+          color: AppTheme.electricBlue, size: 20);
+    }
+    if (_isAvailable == false) {
+      return const Icon(Icons.cancel_rounded,
+          color: AppTheme.blazeOrange, size: 20);
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _statusRow() {
+    if (_checking) {
+      return Text('Checking...',
+          style: AppTheme.caption.copyWith(color: AppTheme.steel));
+    }
+    if (_isAvailable == true) {
+      return Text('✓ Available',
+          style: AppTheme.caption.copyWith(
+            color: AppTheme.electricBlue,
+            fontWeight: FontWeight.w700,
+          ));
+    }
+    if (_isAvailable == false) {
+      return Text('✗ Taken',
+          style: AppTheme.caption.copyWith(
+            color: AppTheme.blazeOrange,
+            fontWeight: FontWeight.w700,
+          ));
+    }
+    return const SizedBox(height: 14);
   }
 }
 

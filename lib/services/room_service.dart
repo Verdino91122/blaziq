@@ -207,7 +207,7 @@ class RoomService {
 
     await _db.collection('rooms').doc(roomId).set({
       'hostUid': host.uid,
-      'hostName': hostData['username'] ?? 'Player',
+      'hostName': hostData['displayName'] ?? hostData['username'] ?? 'Player',
       'hostAvatar': host.photoURL ?? '',
       'hostLevel': (hostData['level'] as num?)?.toInt() ?? 1,
       'hostScore': 0,
@@ -259,7 +259,7 @@ class RoomService {
       }
       tx.update(ref, {
         'guestUid': guest.uid,
-        'guestName': guestData['username'] ?? 'Player',
+        'guestName': guestData['displayName'] ?? guestData['username'] ?? 'Player',
         'guestAvatar': guest.photoURL ?? '',
         'guestLevel': (guestData['level'] as num?)?.toInt() ?? 1,
         'guestConnected': FieldValue.serverTimestamp(),

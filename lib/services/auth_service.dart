@@ -45,8 +45,12 @@ class AuthService {
           try {
             final cred = await anonUser!.linkWithPopup(provider);
             await _ensureDisplayName(cred.user!, null);
-            await UserService.upgradeToGoogle(FirebaseAuth.instance.currentUser ?? cred.user!);
-            await _patchUsernameIfNeeded(FirebaseAuth.instance.currentUser ?? cred.user!);
+            await UserService.upgradeToGoogle(
+              FirebaseAuth.instance.currentUser ?? cred.user!,
+            );
+            await _patchUsernameIfNeeded(
+              FirebaseAuth.instance.currentUser ?? cred.user!,
+            );
             return cred;
           } on FirebaseAuthException catch (e) {
             if ((e.code == 'credential-already-in-use' ||
@@ -59,7 +63,8 @@ class AuthService {
               );
               if (cred?.user != null) {
                 await _patchUsernameIfNeeded(
-                    FirebaseAuth.instance.currentUser ?? cred!.user!);
+                  FirebaseAuth.instance.currentUser ?? cred!.user!,
+                );
               }
               return cred;
             }
@@ -73,11 +78,14 @@ class AuthService {
               cred.additionalUserInfo?.profile?['name'] as String?;
           await _ensureDisplayName(cred.user!, nameFromProfile);
           await _patchUsernameIfNeeded(
-              FirebaseAuth.instance.currentUser ?? cred.user!);
+            FirebaseAuth.instance.currentUser ?? cred.user!,
+          );
         }
         return cred;
       } else {
-        final googleUser = await GoogleSignIn().signIn();
+        final googleUser = await GoogleSignIn(
+          scopes: ['email', 'profile'],
+        ).signIn();
         if (googleUser == null) return null;
 
         // Capture displayName from the Google SDK object NOW — it becomes
@@ -96,9 +104,11 @@ class AuthService {
             final cred = await anonUser!.linkWithCredential(credential);
             await _ensureDisplayName(cred.user!, googleDisplayName);
             await UserService.upgradeToGoogle(
-                FirebaseAuth.instance.currentUser ?? cred.user!);
+              FirebaseAuth.instance.currentUser ?? cred.user!,
+            );
             await _patchUsernameIfNeeded(
-                FirebaseAuth.instance.currentUser ?? cred.user!);
+              FirebaseAuth.instance.currentUser ?? cred.user!,
+            );
             return cred;
           } on FirebaseAuthException catch (e) {
             if ((e.code == 'credential-already-in-use' ||
@@ -111,7 +121,8 @@ class AuthService {
               );
               if (cred?.user != null) {
                 await _patchUsernameIfNeeded(
-                    FirebaseAuth.instance.currentUser ?? cred!.user!);
+                  FirebaseAuth.instance.currentUser ?? cred!.user!,
+                );
               }
               return cred;
             }
@@ -123,7 +134,8 @@ class AuthService {
         if (cred.user != null) {
           await _ensureDisplayName(cred.user!, googleDisplayName);
           await _patchUsernameIfNeeded(
-              FirebaseAuth.instance.currentUser ?? cred.user!);
+            FirebaseAuth.instance.currentUser ?? cred.user!,
+          );
         }
         return cred;
       }
@@ -148,7 +160,8 @@ class AuthService {
     await _ensureDisplayName(cred.user!, googleDisplayName);
 
     await UserService.ensureUserDoc(
-        FirebaseAuth.instance.currentUser ?? cred.user!);
+      FirebaseAuth.instance.currentUser ?? cred.user!,
+    );
     if (anonData != null) {
       await UserService.mergeAnonData(
         googleUid: cred.user!.uid,
@@ -162,7 +175,9 @@ class AuthService {
   /// Writes [fallbackName] to the Firebase user profile when displayName is
   /// missing, then reloads so subsequent reads see the correct value.
   static Future<void> _ensureDisplayName(
-      User user, String? fallbackName) async {
+    User user,
+    String? fallbackName,
+  ) async {
     final current = FirebaseAuth.instance.currentUser;
     final hasName = (current?.displayName ?? user.displayName ?? '').isNotEmpty;
     if (!hasName && fallbackName != null && fallbackName.isNotEmpty) {
@@ -178,13 +193,18 @@ class AuthService {
     final displayName =
         FirebaseAuth.instance.currentUser?.displayName ?? user.displayName;
     if (displayName == null || displayName.isEmpty) return;
-    final ref =
-        FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
     final doc = await ref.get();
     if (!doc.exists) return;
     final current = (doc.data()?['username'] as String?) ?? '';
     if (current.isEmpty || current == 'Player') {
       await ref.update({'username': displayName});
+      try {
+        await FirebaseFirestore.instance
+            .collection('leaderboard')
+            .doc(user.uid)
+            .update({'username': displayName});
+      } catch (_) {}
     }
   }
 

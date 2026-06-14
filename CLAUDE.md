@@ -251,10 +251,35 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
 - Canada tab: players filtered by country field in Firestore
 - Friends tab: players the user follows (Phase 6+)
 
+## Display Name System (Phase 6.5)
+- `displayName` is the canonical public identity field going forward
+- `username` is frozen legacy — never overwrite it, never delete it
+- First launch: `_AppRouter` checks `users/{uid}.displayName`; routes to `WelcomeScreen` (anon) or `NamePickerScreen` (Google) if empty
+- `WelcomeScreen`: shown only to anonymous users; "Continue with Google" or "Continue as Guest" → NamePickerScreen
+- `NamePickerScreen`: mandatory (no back/dismiss); 3–20 chars, `^[a-zA-Z0-9_]+$`; real-time availability check (600ms debounce); suggestion chips on conflict; navigates to `MainShell` on success
+- `DisplayNameService.claimName()`: Firestore transaction — writes `displayNames/{lowercase}` + `users/{uid}.displayName` atomically
+- `DisplayNameService.releaseName()`: marks old name `reserved: true` (not deleted, stays blocked)
+- 7-day cooldown enforced via `users/{uid}.lastNameChange`; `canChangeName()` / `daysUntilCanChange()` helpers
+- Profile screen edit icon next to name → `_ChangeNameSheet` bottom sheet (calls `releaseName` then `claimName`)
+- Everywhere that writes to leaderboard uses `displayName` field (not `username`)
+- `UserService.syncLeaderboardDisplayName(uid, name)` syncs leaderboard after any name change
+- Leaderboard reads: `displayName` first, fall back to `username` for legacy docs
+
+### Firestore Security (add to Firestore rules)
+```
+match /displayNames/{name} {
+  allow read: if true;
+  allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+  allow update: if request.auth != null && resource.data.uid == request.auth.uid;
+}
+```
+
 ## Firebase Structure (Firestore)
 Collection: users
   Document: {uid}
-    - username: string
+    - username: string (legacy — frozen, never overwrite)
+    - displayName: string (canonical public name — always use this going forward)
+    - lastNameChange: timestamp | null (7-day cooldown for name changes)
     - email: string
     - coins: number (default 200 on first sign-in)
     - jokers: number (default 0)
@@ -266,9 +291,16 @@ Collection: users
     - lastPlayedDate: string (yyyy-MM-dd, for daily bonus)
     - createdAt: timestamp
 
+Collection: displayNames
+  Document: {lowercaseName}
+    - uid: string
+    - displayName: string (original casing)
+    - reserved: bool (false = active, true = old name no longer in use but blocked)
+    - createdAt: timestamp
+
 Collection: leaderboard
   Document: {uid}
-    - username: string
+    - displayName: string (canonical — falls back to username for legacy docs on read)
     - score: number (solo best score for now, online rating later)
     - country: string (ISO 3166-1 alpha-2)
     - avatarUrl: string
@@ -362,10 +394,13 @@ This is the most complex feature — build after friend and online modes are com
 
 ## Folder Structure (lib/)
 lib/
-├── main.dart               ← app entry + MainShell + _BottomNav
+├── main.dart               ← app entry + BlaziQApp + _AppRouter (routes to shell or onboarding)
 ├── theme/
 │   └── app_theme.dart      ← all colors, text styles, ThemeData (light theme)
 ├── screens/
+│   ├── main_shell.dart     ← MainShell + curved nav bar (extracted from main.dart)
+│   ├── welcome_screen.dart ← first-launch screen for anonymous users (Google / Guest)
+│   ├── name_picker_screen.dart ← mandatory display name picker (all new users)
 │   ├── home_screen.dart
 │   ├── profile_screen.dart
 │   ├── rank_screen.dart
@@ -375,6 +410,7 @@ lib/
 └── services/
     ├── auth_service.dart         ← anonymous sign-in, Google Sign-In, account linking
     ├── user_service.dart         ← Firestore CRUD, level/XP math, country detection
+    ├── display_name_service.dart ← displayName claim/release/availability/cooldown
     ├── sound_service.dart        ← audioplayers wrapper; SFX + background music
     └── preferences_service.dart  ← shared_preferences wrapper; sounds/music/haptics
 
@@ -430,6 +466,8 @@ lib/
   - ✅ Developer cheat mode: 7 rapid taps on logo activates 5 in-game cheat buttons
   - ✅ Google Sign-In username fix: displayName captured before credential creation,
        _ensureDisplayName() writes it back after signInWithCredential (prevents 'Player' bug)
+  - ✅ Google Sign-In scope fix: GoogleSignIn(scopes: ['email', 'profile']) ensures
+       displayName is returned on Android (missing scopes caused null displayName)
   - ✅ Country detection: ip-api.com IP lookup on doc creation, Android cleartext config,
        refreshCountryIfStale() on launch fixes legacy 'CA' default for non-Canadian users
   - ✅ Full light theme redesign — app-wide:

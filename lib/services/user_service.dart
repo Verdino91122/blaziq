@@ -113,6 +113,9 @@ class UserService {
       'isAnonymous': false,
       'coins': FieldValue.increment(200),
     });
+    try {
+      await _db.collection('leaderboard').doc(user.uid).update({'username': username});
+    } catch (_) {}
   }
 
   /// Merges an anonymous user's progress into an existing Google account doc
@@ -277,13 +280,15 @@ class UserService {
     // the current game doesn't beat their personal best.
     final effectiveBest = score > currentBest ? score : currentBest;
     if (effectiveBest > 0) {
-      final username = (data['username'] as String?) ?? 'Player';
+      final displayName = (data['displayName'] as String?) ??
+          (data['username'] as String?) ??
+          'Player';
       final rawCountry = (data['country'] as String?) ?? '';
       final country = rawCountry.isNotEmpty ? rawCountry : await _detectCountry();
       await updateLeaderboard(
         uid: uid,
         score: effectiveBest,
-        username: username,
+        displayName: displayName,
         avatarUrl: avatarUrl,
         country: country,
       );
@@ -297,7 +302,7 @@ class UserService {
   static Future<void> updateLeaderboard({
     required String uid,
     required int score,
-    required String username,
+    required String displayName,
     required String avatarUrl,
     required String country,
   }) async {
@@ -306,13 +311,25 @@ class UserService {
     final currentScore = (existing.data()?['score'] as num?)?.toInt() ?? 0;
     if (!existing.exists || score > currentScore) {
       await ref.set({
-        'username': username,
+        'displayName': displayName,
         'score': score,
         'country': country,
         'avatarUrl': avatarUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }
+  }
+
+  /// Updates only the displayName field on an existing leaderboard doc.
+  /// Safe to call after a name change — no-op if the doc doesn't exist yet.
+  static Future<void> syncLeaderboardDisplayName(
+      String uid, String displayName) async {
+    try {
+      await _db
+          .collection('leaderboard')
+          .doc(uid)
+          .update({'displayName': displayName});
+    } catch (_) {}
   }
 
   /// Live stream of the leaderboard collection ordered by score descending.
@@ -367,12 +384,9 @@ class UserService {
       await ref.update({'username': chosen});
 
       // Keep the leaderboard username in sync.
-      final lbRef = _db.collection('leaderboard').doc(uid);
-      final lbDoc = await lbRef.get();
-      if (lbDoc.exists &&
-          ((lbDoc.data()?['username'] as String?) ?? '') == 'Player') {
-        await lbRef.update({'username': chosen});
-      }
+      try {
+        await _db.collection('leaderboard').doc(uid).update({'username': chosen});
+      } catch (_) {}
     } catch (e) {
       debugPrint('[Blaziq] fixPlayerUsername error: $e');
     }

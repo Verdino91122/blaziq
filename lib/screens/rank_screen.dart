@@ -25,7 +25,7 @@ class _Entry {
     final d = doc.data();
     return _Entry(
       uid: doc.id,
-      username: (d['username'] as String?) ?? 'Player',
+      username: (d['displayName'] as String?) ?? (d['username'] as String?) ?? 'Player',
       score: (d['score'] as num?)?.toInt() ?? 0,
       country: (d['country'] as String?) ?? '',
       avatarUrl: (d['avatarUrl'] as String?) ?? '',
