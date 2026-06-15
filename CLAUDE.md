@@ -484,6 +484,17 @@ lib/
        AutoSizeText question card, 2×2 answer grid with asymmetric corner radii + scale press
        All screens: light backgrounds, profile gradient removed, status bar dark icons
 
+- Phase 6 sync fix — COMPLETE
+  - ✅ Server-timestamp synchronization eliminates question timing desync between devices
+  - ✅ RoomData: gameStartedAt, buzzerPressedAt, nextQuestionAt, inheritedDeadlineAt fields
+  - ✅ pressBuzzer() writes buzzerPressedAt: FieldValue.serverTimestamp()
+  - ✅ submitAnswer() writes nextQuestionAt (now+4800ms) on transition; inheritedDeadlineAt (now+10s) on inherited
+  - ✅ nextQuestion() clears all phase timestamps, writes phaseStartedAt
+  - ✅ _startGameAsHost() writes gameStartedAt; game timer syncs to it once received
+  - ✅ _startBuzzerAnswerTimer(): counts to shared buzzerPressedAt+3s deadline
+  - ✅ _startInheritedTimer(): counts to shared inheritedDeadlineAt deadline
+  - ✅ _startGetReady(): counts to shared nextQuestionAt; both devices trigger at same instant
+
 - Phase 6: Friend Mode — COMPLETE
   - ✅ Question JSON assets: assets/data/ — 4 categories, 100 questions each:
        questions_science.json · questions_geography.json · questions_history.json · questions_general_knowledge.json

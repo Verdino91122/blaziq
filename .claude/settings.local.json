@@ -26,7 +26,8 @@
       "Bash(cp \"c:/Users/user/Documents/questions_history.json\" \"c:/Users/user/Documents/Blaziq/assets/data/questions_history.json\")",
       "Bash(echo \"EXIT:$?\")",
       "Bash(cp \"C:/Users/user/Documents/google.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/google.svg\")",
-      "Bash(cp \"C:/Users/user/Documents/guest.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/guest.svg\")"
+      "Bash(cp \"C:/Users/user/Documents/guest.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/guest.svg\")",
+      "Bash(dart analyze *)"
     ]
   }
 }

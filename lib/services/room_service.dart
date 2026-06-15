@@ -91,6 +91,12 @@ class RoomData {
   final int hostTotalScore;
   final int guestTotalScore;
 
+  // Server timestamps for cross-device synchronization
+  final Timestamp? gameStartedAt;
+  final Timestamp? buzzerPressedAt;
+  final Timestamp? nextQuestionAt;
+  final Timestamp? inheritedDeadlineAt;
+
   const RoomData({
     required this.hostUid,
     required this.hostName,
@@ -121,6 +127,10 @@ class RoomData {
     required this.guestGamesWon,
     required this.hostTotalScore,
     required this.guestTotalScore,
+    this.gameStartedAt,
+    this.buzzerPressedAt,
+    this.nextQuestionAt,
+    this.inheritedDeadlineAt,
   });
 
   factory RoomData.fromSnapshot(Map<String, dynamic> d) {
@@ -155,6 +165,10 @@ class RoomData {
       guestGamesWon: (d['guestGamesWon'] as num?)?.toInt() ?? 0,
       hostTotalScore: (d['hostTotalScore'] as num?)?.toInt() ?? 0,
       guestTotalScore: (d['guestTotalScore'] as num?)?.toInt() ?? 0,
+      gameStartedAt: d['gameStartedAt'] as Timestamp?,
+      buzzerPressedAt: d['buzzerPressedAt'] as Timestamp?,
+      nextQuestionAt: d['nextQuestionAt'] as Timestamp?,
+      inheritedDeadlineAt: d['inheritedDeadlineAt'] as Timestamp?,
     );
   }
 
@@ -236,6 +250,10 @@ class RoomService {
       'hostTotalScore': 0,
       'guestTotalScore': 0,
       'createdAt': FieldValue.serverTimestamp(),
+      'gameStartedAt': null,
+      'buzzerPressedAt': null,
+      'nextQuestionAt': null,
+      'inheritedDeadlineAt': null,
     });
 
     return roomId;
@@ -327,6 +345,7 @@ class RoomService {
       // In normal play, advance to 'answering'.
       tx.update(ref, {
         'buzzerWinner': uid,
+        'buzzerPressedAt': FieldValue.serverTimestamp(),
         if (phase == 'buzzer') 'phase': 'answering',
       });
       won = true;
@@ -357,6 +376,12 @@ class RoomService {
       final correctField = isHost ? 'hostCorrect' : 'guestCorrect';
       final currentScore = (d[scoreField] as num?)?.toInt() ?? 0;
 
+      // Shared deadline used for all transitions to the next question.
+      // Both clients count down to this absolute timestamp so they advance in sync.
+      final nextQuestionAt = Timestamp.fromMillisecondsSinceEpoch(
+        DateTime.now().millisecondsSinceEpoch + 4800,
+      );
+
       if (phase == 'answering') {
         if (isCorrect) {
           // Buzzer winner correct: +3 pts, move to transition
@@ -364,6 +389,7 @@ class RoomService {
             scoreField: currentScore + 3,
             correctField: FieldValue.increment(1),
             'phase': 'transition',
+            'nextQuestionAt': nextQuestionAt,
           });
         } else {
           // Buzzer winner wrong/timeout: -1 pt, move to inherited
@@ -371,6 +397,9 @@ class RoomService {
             scoreField: (currentScore - 1).clamp(0, 99999),
             'buzzerWrongAnswer': answer,
             'phase': 'inherited',
+            'inheritedDeadlineAt': Timestamp.fromMillisecondsSinceEpoch(
+              DateTime.now().millisecondsSinceEpoch + 10000,
+            ),
           });
         }
       } else if (phase == 'inherited') {
@@ -380,10 +409,14 @@ class RoomService {
             scoreField: currentScore + 2,
             correctField: FieldValue.increment(1),
             'phase': 'transition',
+            'nextQuestionAt': nextQuestionAt,
           });
         } else {
           // Inheritor wrong/timeout: 0 pts, move to transition
-          tx.update(ref, {'phase': 'transition'});
+          tx.update(ref, {
+            'phase': 'transition',
+            'nextQuestionAt': nextQuestionAt,
+          });
         }
       } else if (phase == 'sudden_death') {
         if (isCorrect) {
@@ -432,6 +465,10 @@ class RoomService {
       'phase': 'buzzer',
       'buzzerWinner': null,
       'buzzerWrongAnswer': null,
+      'phaseStartedAt': FieldValue.serverTimestamp(),
+      'buzzerPressedAt': null,
+      'nextQuestionAt': null,
+      'inheritedDeadlineAt': null,
     });
   }
 
@@ -536,6 +573,10 @@ class RoomService {
         'buzzerWrongAnswer': null,
         'winnerId': null,
         'quitUid': null,
+        'gameStartedAt': null,
+        'buzzerPressedAt': null,
+        'nextQuestionAt': null,
+        'inheritedDeadlineAt': null,
       });
     } catch (_) {}
   }

@@ -37,12 +37,18 @@ class _FriendGameScreenState extends State<FriendGameScreen>
   Timer? _getReadyTimer;
   Timer? _disconnectTimer;
 
+  // ── Server-timestamp sync ──────────────────────────────────────────────────
+  DateTime? _gameStartedAt;
+  Timestamp? _nextQuestionAt;
+  Timestamp? _inheritedDeadlineAt;
+
   // ── Game state ─────────────────────────────────────────────────────────────
   int _gameSecondsLeft = 180;
   int _answerSecondsLeft = 0;
   int _getReadyCount = 3;
   bool _showGetReady = false;
   bool _showSuddenDeathBanner = false;
+  bool _transitioning = false; // true between get-ready end and new question arriving
   bool _gameStarted = false;
   bool _gameEnded = false;
   bool _navigating = false;
@@ -159,11 +165,19 @@ class _FriendGameScreenState extends State<FriendGameScreen>
   }
 
   Future<void> _startGameAsHost() async {
+    // Record game start time immediately using local clock so the host timer
+    // never falls through to local-decrement mode. The server timestamp written
+    // below is the authoritative reference for the guest; the host's local clock
+    // is accurate enough since it is the device making the write.
+    _gameStartedAt = DateTime.now();
     try {
       await FirebaseFirestore.instance
           .collection('rooms')
           .doc(widget.roomId)
-          .update({'status': 'playing'});
+          .update({
+        'status': 'playing',
+        'gameStartedAt': FieldValue.serverTimestamp(),
+      });
     } catch (_) {}
     _beginGameTimer();
   }
@@ -173,13 +187,24 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     _gameStarted = true;
     _gameTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() {
-        if (_gameSecondsLeft > 0) {
-          _gameSecondsLeft--;
-        } else {
-          _triggerGameEnd();
-        }
-      });
+      final startedAt = _gameStartedAt;
+      if (startedAt != null) {
+        // Compute remaining time from the shared server timestamp so both
+        // devices stay perfectly in sync regardless of when they started locally.
+        final elapsed = DateTime.now().difference(startedAt).inSeconds;
+        final remaining = (180 - elapsed).clamp(0, 180);
+        setState(() => _gameSecondsLeft = remaining);
+        if (remaining == 0) _triggerGameEnd();
+      } else {
+        // Fallback: decrement locally until we receive the server timestamp.
+        setState(() {
+          if (_gameSecondsLeft > 0) {
+            _gameSecondsLeft--;
+          } else {
+            _triggerGameEnd();
+          }
+        });
+      }
     });
   }
 
@@ -207,6 +232,46 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     });
   }
 
+  // Counts down to a shared server-side deadline written when the buzzer was pressed.
+  // Falls back to local limitSecs-second timer if the timestamp isn't available yet.
+  void _startBuzzerAnswerTimer(Timestamp? buzzerPressedAt, {int limitSecs = 3}) {
+    _answerTimer?.cancel();
+    if (buzzerPressedAt == null) {
+      _startAnswerTimer(limitSecs);
+      return;
+    }
+    final deadline = buzzerPressedAt.toDate().add(Duration(seconds: limitSecs));
+    _answerTimer = Timer.periodic(const Duration(milliseconds: 200), (t) {
+      if (!mounted) { t.cancel(); return; }
+      final rem = deadline.difference(DateTime.now());
+      setState(() => _answerSecondsLeft = rem.inSeconds.clamp(0, limitSecs));
+      if (rem.inMilliseconds <= 0) {
+        t.cancel();
+        _onAnswerTimeout();
+      }
+    });
+  }
+
+  // Counts down to the shared server-side inherited-question deadline.
+  // Falls back to local 10-second timer if the timestamp isn't available.
+  void _startInheritedTimer(Timestamp? deadlineTs) {
+    _answerTimer?.cancel();
+    if (deadlineTs == null) {
+      _startAnswerTimer(10);
+      return;
+    }
+    final deadline = deadlineTs.toDate();
+    _answerTimer = Timer.periodic(const Duration(milliseconds: 200), (t) {
+      if (!mounted) { t.cancel(); return; }
+      final rem = deadline.difference(DateTime.now());
+      setState(() => _answerSecondsLeft = rem.inSeconds.clamp(0, 10));
+      if (rem.inMilliseconds <= 0) {
+        t.cancel();
+        _onAnswerTimeout();
+      }
+    });
+  }
+
   void _onAnswerTimeout() {
     if (_answered) return;
     setState(() {
@@ -227,21 +292,42 @@ class _FriendGameScreenState extends State<FriendGameScreen>
       _getReadyCount = 3;
     });
     _getReadyTimer?.cancel();
-    _getReadyTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      if (_getReadyCount <= 1) {
-        t.cancel();
-        setState(() => _showGetReady = false);
-        if (widget.isHost) {
-          RoomService.nextQuestion(widget.roomId);
+
+    final target = _nextQuestionAt;
+    if (target != null) {
+      // Both devices count down to the same absolute timestamp, so they call
+      // nextQuestion() (host) or advance their UI (guest) at the same instant.
+      _getReadyTimer = Timer.periodic(const Duration(milliseconds: 100), (t) {
+        if (!mounted) { t.cancel(); return; }
+        final rem = target.toDate().difference(DateTime.now());
+        if (rem.inMilliseconds <= 0) {
+          t.cancel();
+          setState(() {
+            _showGetReady = false;
+            _transitioning = true;
+          });
+          if (widget.isHost) RoomService.nextQuestion(widget.roomId);
+        } else {
+          setState(() =>
+              _getReadyCount = (rem.inMilliseconds / 1000).ceil().clamp(1, 3));
         }
-      } else {
-        setState(() => _getReadyCount--);
-      }
-    });
+      });
+    } else {
+      // Fallback: local 3-second countdown.
+      _getReadyTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted) { t.cancel(); return; }
+        if (_getReadyCount <= 1) {
+          t.cancel();
+          setState(() {
+            _showGetReady = false;
+            _transitioning = true;
+          });
+          if (widget.isHost) RoomService.nextQuestion(widget.roomId);
+        } else {
+          setState(() => _getReadyCount--);
+        }
+      });
+    }
   }
 
   void _onPhaseChanged(String newPhase, RoomData room) {
@@ -250,8 +336,16 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     switch (newPhase) {
       case 'answering':
         if (room.buzzerWinner == widget.myUid) {
-          _startAnswerTimer(3);
-          _startBuzzerCountdown(3.0);
+          // Use the shared buzzerPressedAt timestamp so the countdown matches
+          // the server deadline rather than each client's local receive time.
+          _startBuzzerAnswerTimer(room.buzzerPressedAt);
+          final elapsed = room.buzzerPressedAt != null
+              ? DateTime.now()
+                      .difference(room.buzzerPressedAt!.toDate())
+                      .inMilliseconds /
+                  1000.0
+              : 0.0;
+          _startBuzzerCountdown((3.0 - elapsed).clamp(0.0, 3.0));
         } else {
           _answerTimer?.cancel();
           _stopBuzzerCountdown();
@@ -261,9 +355,11 @@ class _FriendGameScreenState extends State<FriendGameScreen>
 
       case 'inherited':
         _stopBuzzerCountdown();
+        // Capture the shared deadline before any async delay.
+        _inheritedDeadlineAt = room.inheritedDeadlineAt;
         final iAmInheritor = room.buzzerWinner != widget.myUid;
         // Play the -1 penalty float immediately (buzzer winner just got penalized),
-        // then start the inheritor's 10s timer after the animation completes.
+        // then start the inheritor's timer after the animation completes.
         if (_pendingFloatText != null) {
           setState(() {
             _floatingText = _pendingFloatText;
@@ -274,16 +370,15 @@ class _FriendGameScreenState extends State<FriendGameScreen>
           _floatCtrl.forward(from: 0);
           if (iAmInheritor) {
             Future.delayed(const Duration(milliseconds: 800), () {
-              if (mounted && !_gameEnded) _startAnswerTimer(10);
+              if (mounted && !_gameEnded) _startInheritedTimer(_inheritedDeadlineAt);
             });
           } else {
             _answerTimer?.cancel();
             setState(() => _answerSecondsLeft = 0);
           }
         } else {
-          // Fallback: no pending float, start timer immediately
           if (iAmInheritor) {
-            _startAnswerTimer(10);
+            _startInheritedTimer(_inheritedDeadlineAt);
           } else {
             _answerTimer?.cancel();
             setState(() => _answerSecondsLeft = 0);
@@ -294,6 +389,9 @@ class _FriendGameScreenState extends State<FriendGameScreen>
       case 'transition':
         _answerTimer?.cancel();
         _stopBuzzerCountdown();
+        // Capture the shared next-question timestamp before starting animations
+        // so _startGetReady() can count down to the exact same moment on both devices.
+        _nextQuestionAt = room.nextQuestionAt;
         setState(() => _answerSecondsLeft = 0);
         _startTransitionSequence();
         break;
@@ -322,9 +420,10 @@ class _FriendGameScreenState extends State<FriendGameScreen>
   void _onBuzzerWinnerChanged(String? newWinner, RoomData room) {
     _lastBuzzerWinner = newWinner;
 
-    // In sudden_death, when I win the buzzer, start an answer timer
+    // In sudden_death, when I win the buzzer, start an answer timer.
+    // Use the shared buzzerPressedAt so both devices see the same deadline.
     if (room.phase == 'sudden_death' && newWinner == widget.myUid) {
-      _startAnswerTimer(10);
+      _startBuzzerAnswerTimer(room.buzzerPressedAt, limitSecs: 10);
     }
   }
 
@@ -340,6 +439,7 @@ class _FriendGameScreenState extends State<FriendGameScreen>
       _lastQuestionId = room.currentQuestion?.id;
       _answerSecondsLeft = 0;
       _showGetReady = false;
+      _transitioning = false;
       _revealCorrect = false;
       _floatingText = null;
     });
@@ -603,10 +703,17 @@ class _FriendGameScreenState extends State<FriendGameScreen>
           final data = snap.data!.data()!;
           final room = RoomData.fromSnapshot(data);
 
-          // Guest starts game timer once host sets status to 'playing'
+          // Guest starts game timer once host sets status to 'playing'.
+          // Capture gameStartedAt in the SAME callback that starts the timer so
+          // the timer's first tick already uses the server timestamp — no local-
+          // decrement fallback period and no visible clock jump on arrival.
           if (!_gameStarted && room.status == 'playing' && !widget.isHost) {
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => _beginGameTimer());
+            final startedAt = room.gameStartedAt?.toDate();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (startedAt != null) _gameStartedAt = startedAt;
+              _beginGameTimer();
+            });
           }
 
           // Detect question change
@@ -681,6 +788,7 @@ class _FriendGameScreenState extends State<FriendGameScreen>
               child: Stack(
                 children: [
                   _buildBody(room),
+                  if (_transitioning) _buildTransitioningOverlay(),
                   if (_showGetReady) _buildGetReadyOverlay(),
                   if (_showSuddenDeathBanner) _buildSuddenDeathOverlay(),
                   if (_isDisconnected) _buildDisconnectBanner(),
@@ -1087,6 +1195,20 @@ class _FriendGameScreenState extends State<FriendGameScreen>
   }
 
   // ── Overlays ───────────────────────────────────────────────────────────────
+
+  Widget _buildTransitioningOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: AppTheme.cloudWhite.withAlpha(245),
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.electricBlue,
+            strokeWidth: 2,
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildGetReadyOverlay() {
     return Positioned.fill(
