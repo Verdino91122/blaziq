@@ -40,8 +40,32 @@ void main() async {
   runApp(const BlaziQApp());
 }
 
-class BlaziQApp extends StatelessWidget {
+class BlaziQApp extends StatefulWidget {
   const BlaziQApp({super.key});
+
+  @override
+  State<BlaziQApp> createState() => _BlaziQAppState();
+}
+
+class _BlaziQAppState extends State<BlaziQApp> {
+  final _navKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    AuthService.onSignOut = () {
+      _navKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+        (_) => false,
+      );
+    };
+  }
+
+  @override
+  void dispose() {
+    AuthService.onSignOut = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +73,7 @@ class BlaziQApp extends StatelessWidget {
       title: 'Blaziq',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
+      navigatorKey: _navKey,
       home: const _AppRouter(),
     );
   }

@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/display_name_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_background.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -48,12 +49,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final user = snapshot.data;
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: SizedBox.expand(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: AppTheme.backgroundGradient,
-              ),
-              child: SafeArea(
+          body: AnimatedBackground(
+            child: SafeArea(
+              bottom: false,
               child: user == null || user.isAnonymous
                   ? _AnonView(
                       user: user,
@@ -62,7 +60,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     )
                   : _SignedInView(user: user, onSignOut: _handleSignOut),
             ),
-          ),
           ),
         );
       },
@@ -86,7 +83,7 @@ class _AnonView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.of(context).padding.bottom),
       child: Column(
         children: [
           const SizedBox(height: 24),
@@ -277,7 +274,7 @@ class _SignedInView extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         content: Text(
-          'Progress earned while signed out won\'t be saved to your account.',
+          'You will need to choose a new nickname to continue as a guest.',
           style: AppTheme.bodyMuted,
           textAlign: TextAlign.center,
         ),
@@ -345,7 +342,7 @@ class _SignedInView extends StatelessWidget {
             user.displayName ??
             'Player';
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.of(context).padding.bottom),
           child: Column(
             children: [
               const SizedBox(height: 40),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_background.dart';
 
 class MenuScreen extends StatefulWidget {
   final VoidCallback onNavigateToProfile;
@@ -70,7 +71,7 @@ class _MenuScreenState extends State<MenuScreen> {
         title: Text('Sign Out?',
             style: AppTheme.subheading.copyWith(fontSize: 20),
             textAlign: TextAlign.center),
-        content: Text('You will be signed out of your account.',
+        content: Text('You will need to choose a new nickname to continue as a guest.',
             style: AppTheme.bodyMuted, textAlign: TextAlign.center),
         actionsAlignment: MainAxisAlignment.center,
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -125,20 +126,17 @@ class _MenuScreenState extends State<MenuScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SizedBox.expand(
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.backgroundGradient,
-          ),
-          child: SafeArea(
-            child: Column(
+      body: AnimatedBackground(
+        child: SafeArea(
+          bottom: false,
+          child: Column(
               children: [
                 const SizedBox(height: 20),
                 Text('SETTINGS', style: AppTheme.screenTitle),
                 const SizedBox(height: 20),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).padding.bottom),
                 children: [
                   _SectionHeader('AUDIO & HAPTICS'),
                   _ToggleRow(
@@ -223,7 +221,6 @@ class _MenuScreenState extends State<MenuScreen> {
           ],
         ),
       ),
-    ),
     ),
     );
   }

@@ -33,36 +33,44 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.white,
       body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).padding.bottom,
-        ),
-        child: CurvedNavigationBar(
-          index: _currentIndex,
-          color: Colors.white,
-          buttonBackgroundColor: AppTheme.electricBlue,
-          backgroundColor: Colors.transparent,
-          animationDuration: const Duration(milliseconds: 300),
-          animationCurve: Curves.easeInOut,
-          height: 60,
-          items: [
-            Icon(Icons.person, size: 22,
-                color: _currentIndex == 0 ? Colors.white : AppTheme.ink),
-            Icon(Icons.emoji_events, size: 22,
-                color: _currentIndex == 1 ? Colors.white : AppTheme.ink),
-            Icon(Icons.home, size: 22,
-                color: _currentIndex == 2 ? Colors.white : AppTheme.ink),
-            Icon(Icons.storefront, size: 22,
-                color: _currentIndex == 3 ? Colors.white : AppTheme.ink),
-            Icon(Icons.settings, size: 22,
-                color: _currentIndex == 4 ? Colors.white : AppTheme.ink),
-          ],
-          onTap: (index) => setState(() => _currentIndex = index),
-        ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CurvedNavigationBar(
+            index: _currentIndex,
+            color: Colors.white,
+            buttonBackgroundColor: AppTheme.electricBlue,
+            backgroundColor: Colors.transparent,
+            animationDuration: const Duration(milliseconds: 300),
+            animationCurve: Curves.easeInOut,
+            height: 60,
+            items: [
+              Icon(Icons.person, size: 22,
+                  color: _currentIndex == 0 ? Colors.white : AppTheme.ink),
+              Icon(Icons.emoji_events, size: 22,
+                  color: _currentIndex == 1 ? Colors.white : AppTheme.ink),
+              Icon(Icons.home, size: 22,
+                  color: _currentIndex == 2 ? Colors.white : AppTheme.ink),
+              Icon(Icons.storefront, size: 22,
+                  color: _currentIndex == 3 ? Colors.white : AppTheme.ink),
+              Icon(Icons.settings, size: 22,
+                  color: _currentIndex == 4 ? Colors.white : AppTheme.ink),
+            ],
+            onTap: (index) => setState(() => _currentIndex = index),
+          ),
+          ColoredBox(
+            color: Colors.white,
+            child: SizedBox(
+              height: bottomPadding,
+              width: double.infinity,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -63,38 +63,49 @@ class UserService {
   // ── User doc ──────────────────────────────────────────────────────────────
 
   /// Creates the Firestore user doc on first sign-in. No-op if it already exists.
-  /// Anonymous users get a generated username; Google users use their display name.
+  /// Anonymous users get a minimal doc (no username/displayName — name picker fills those).
+  /// Google users get a full doc with username from their Google profile.
   static Future<void> ensureUserDoc(User user) async {
     final ref = _db.collection('users').doc(user.uid);
     final doc = await ref.get();
     if (!doc.exists) {
-      String username;
+      final country = await _detectCountry();
       if (user.isAnonymous) {
-        username = 'Guest_${user.uid.substring(0, 6)}';
+        await ref.set({
+          'email': '',
+          'coins': 0,
+          'jokers': 0,
+          'xp': 0,
+          'level': 1,
+          'gamesPlayed': 0,
+          'bestScore': 0,
+          'country': country,
+          'isAnonymous': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       } else {
         // Reload to ensure the display name is available (can be null on first
         // sign-in before the token is fully propagated).
         await user.reload();
         final freshUser = FirebaseAuth.instance.currentUser;
-        username = freshUser?.displayName ??
+        final username = freshUser?.displayName ??
             user.displayName ??
             user.email?.split('@')[0] ??
             'Player';
+        await ref.set({
+          'username': username,
+          'email': user.email ?? '',
+          'coins': 200,
+          'jokers': 0,
+          'xp': 0,
+          'level': 1,
+          'gamesPlayed': 0,
+          'bestScore': 0,
+          'country': country,
+          'isAnonymous': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
-      final country = await _detectCountry();
-      await ref.set({
-        'username': username,
-        'email': user.email ?? '',
-        'coins': 200,
-        'jokers': 0,
-        'xp': 0,
-        'level': 1,
-        'gamesPlayed': 0,
-        'bestScore': 0,
-        'country': country,
-        'isAnonymous': user.isAnonymous,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
     }
   }
 
@@ -233,16 +244,14 @@ class UserService {
   }) async {
     final ref = _db.collection('users').doc(uid);
 
-    // Lazy creation: create the Firestore doc on first completed game if it
-    // doesn't exist yet. This is the only place docs are created for anon users.
+    // Lazy-creation fallback in case ensureUserDoc was never called.
     final doc = await ref.get();
     if (!doc.exists) {
-      final username = isAnonymous ? 'Guest_${uid.substring(0, 6)}' : 'Player';
       final country = await _detectCountry();
       await ref.set({
-        'username': username,
+        if (!isAnonymous) 'username': 'Player',
         'email': '',
-        'coins': 200,
+        'coins': 0,
         'jokers': 0,
         'xp': 0,
         'level': 1,

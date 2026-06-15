@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, VoidCallback;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'user_service.dart';
 
 class AuthService {
   static final _auth = FirebaseAuth.instance;
+
+  static VoidCallback? onSignOut;
 
   static Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -214,5 +216,6 @@ class AuthService {
     if (!kIsWeb) await GoogleSignIn().signOut();
     await _auth.signOut();
     await ensureAnonymousSignIn();
+    onSignOut?.call();
   }
 }

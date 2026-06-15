@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/display_name_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_background.dart';
 import 'main_shell.dart';
 
 class NamePickerScreen extends StatefulWidget {
@@ -142,9 +143,10 @@ class _NamePickerScreenState extends State<NamePickerScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
-        backgroundColor: AppTheme.cloudWhite,
-        body: SafeArea(
-          child: SingleChildScrollView(
+        backgroundColor: Colors.transparent,
+        body: AnimatedBackground(
+          child: SafeArea(
+            child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -262,6 +264,7 @@ class _NamePickerScreenState extends State<NamePickerScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

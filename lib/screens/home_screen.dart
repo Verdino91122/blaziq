@@ -7,6 +7,7 @@ import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import 'friend_mode_screen.dart';
 import 'solo_game_screen.dart';
+import '../widgets/animated_background.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -47,14 +48,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SizedBox.expand(
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.backgroundGradient,
-          ),
-          child: SafeArea(
-            top: false,
-            child: LayoutBuilder(
+      body: AnimatedBackground(
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: LayoutBuilder(
           builder: (context, constraints) {
             // 52% of the SafeArea-adjusted available height goes to the card
             // carousel. Percentage-based so it adapts to any screen size without
@@ -63,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 (constraints.maxHeight * 0.52).clamp(220.0, 460.0);
             return SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
               child: Column(
                 children: [
                   const _HeaderBar(),
@@ -92,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ),
-    ),
     ),
     );
   }

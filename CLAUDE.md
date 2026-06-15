@@ -18,6 +18,8 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - flutter_launcher_icons ^0.14.1 for app icon generation (dev dep)
 - audioplayers ^6.0.0 for sound effects and background music
 - shared_preferences ^2.3.0 for persisting settings (sounds, music, haptics)
+- flutter_svg ^2.0.0 for SVG icon rendering (google.svg, guest.svg in assets/icons/)
+- lottie ^3.3.3 for animated background (assets/animations/background.json on all main screens and onboarding)
 - State management: Provider or simple StatefulWidget — nothing heavier
 
 ## Design System
@@ -255,7 +257,7 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
 - `displayName` is the canonical public identity field going forward
 - `username` is frozen legacy — never overwrite it, never delete it
 - First launch: `_AppRouter` checks `users/{uid}.displayName`; routes to `WelcomeScreen` (anon) or `NamePickerScreen` (Google) if empty
-- `WelcomeScreen`: shown only to anonymous users; "Continue with Google" or "Continue as Guest" → NamePickerScreen
+- `WelcomeScreen`: shown only to anonymous users; logo + title + tagline; two SVG-icon buttons (google.svg / guest.svg, Fira Sans 15sp w700, ink, white bg, 14px radius, electricBlue border for Google / deepGrey for Guest, subtitle text below each label); "Continue with Google" → Google sign-in then NamePickerScreen (or MainShell if name already set); "Continue as Guest" → modal bottom sheet (_GuestPickerSheet) with full name picker, X dismiss button, isDismissible: false
 - `NamePickerScreen`: mandatory (no back/dismiss); 3–20 chars, `^[a-zA-Z0-9_]+$`; real-time availability check (600ms debounce); suggestion chips on conflict; navigates to `MainShell` on success
 - `DisplayNameService.claimName()`: Firestore transaction — writes `displayNames/{lowercase}` + `users/{uid}.displayName` atomically
 - `DisplayNameService.releaseName()`: marks old name `reserved: true` (not deleted, stays blocked)
@@ -407,6 +409,10 @@ lib/
 │   ├── store_screen.dart
 │   ├── menu_screen.dart
 │   └── solo_game_screen.dart
+├── widgets/
+│   └── animated_background.dart ← Lottie animated background (Stack + background.json);
+│                                   applied to all 5 nav screens + welcome + name_picker;
+│                                   NOT applied to solo/friend game screens or lobby/host/join
 └── services/
     ├── auth_service.dart         ← anonymous sign-in, Google Sign-In, account linking
     ├── user_service.dart         ← Firestore CRUD, level/XP math, country detection
@@ -554,6 +560,19 @@ lib/
   - Session scoreboard in lobby: shown after ≥1 game completed; displays wins + cumulative
     score per player; persisted in hostGamesWon/guestGamesWon/hostTotalScore/guestTotalScore
   - Results screen has 3 buttons: PLAY AGAIN / LEAVE TO LOBBY (both → lobby) / HOME
+
+- Phase 6.5 polish: Sign-out + Lottie background — COMPLETE
+  - ✅ Sign-out flow fixed: AuthService.onSignOut static callback fires after re-anonymous sign-in;
+       BlaziQApp (now StatefulWidget with GlobalKey<NavigatorState>) navigates to WelcomeScreen
+       with full stack clear — new anonymous sessions always go through name picker
+  - ✅ ensureUserDoc() for anonymous users writes minimal doc (no username, no displayName,
+       coins: 0) so _AppRouter always routes them to WelcomeScreen
+  - ✅ Sign-out dialog subtitle updated: 'You will need to choose a new nickname to continue as a guest.'
+  - ✅ Lottie animated background (lottie ^3.3.3): assets/animations/background.json
+       Applied via AnimatedBackground widget (lib/widgets/animated_background.dart) to all
+       5 nav screens (home, profile, rank, store, menu) + welcome + name_picker
+       Not applied to solo/friend game screens, lobby, host, or join screens
+       Scaffold backgroundColor: Colors.transparent on affected screens
 
 ### Next
 - Phase 7: Online matchmaking (random opponent + online leaderboard)

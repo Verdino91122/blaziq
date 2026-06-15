@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_background.dart';
 
 // ── Data model ────────────────────────────────────────────────────────────────
 
@@ -67,13 +68,10 @@ class _RankScreenState extends State<RankScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SizedBox.expand(
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.backgroundGradient,
-          ),
-          child: SafeArea(
-            child: Column(
+      body: AnimatedBackground(
+        child: SafeArea(
+          bottom: false,
+          child: Column(
               children: [
               const SizedBox(height: 20),
               Text('LEADERBOARD', style: AppTheme.screenTitle),
@@ -93,7 +91,6 @@ class _RankScreenState extends State<RankScreen> {
           ),
         ),
       ),
-    ),
     );
   }
 }
@@ -197,7 +194,7 @@ class _LeaderboardBody extends StatelessWidget {
             const Divider(color: AppTheme.divider, height: 1),
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                padding: EdgeInsets.only(top: 8, bottom: MediaQuery.of(context).padding.bottom),
                 itemCount: rest.length,
                 itemBuilder: (context, i) => _PlayerRow(
                   entry: rest[i],

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_background.dart';
 
 class StoreScreen extends StatelessWidget {
   const StoreScreen({super.key});
@@ -12,13 +13,10 @@ class StoreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SizedBox.expand(
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.backgroundGradient,
-          ),
-          child: SafeArea(
-        child: Column(
+      body: AnimatedBackground(
+        child: SafeArea(
+          bottom: false,
+          child: Column(
           children: [
             const _ShopHeader(),
             Expanded(
@@ -56,7 +54,6 @@ class StoreScreen extends StatelessWidget {
           ],
         ),
       ),
-    ),
     ),
     );
   }
