@@ -7,12 +7,16 @@ import '../services/display_name_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
+import 'avatar_picker_screen.dart';
 import 'main_shell.dart';
 
 class NamePickerScreen extends StatefulWidget {
   final String? prefill;
+  /// When true (new Google sign-ins), navigates to AvatarPickerScreen after
+  /// a successful name claim instead of going directly to MainShell.
+  final bool isOnboarding;
 
-  const NamePickerScreen({super.key, this.prefill});
+  const NamePickerScreen({super.key, this.prefill, this.isOnboarding = false});
 
   @override
   State<NamePickerScreen> createState() => _NamePickerScreenState();
@@ -101,10 +105,21 @@ class _NamePickerScreenState extends State<NamePickerScreen> {
         await UserService.syncLeaderboardDisplayName(user.uid, name);
       } catch (_) {}
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-        (_) => false,
-      );
+      if (widget.isOnboarding) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => AvatarPickerScreen(
+              uid: user.uid,
+              googlePhotoUrl: user.photoURL,
+            ),
+          ),
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainShell()),
+          (_) => false,
+        );
+      }
     } else if (result == ClaimResult.taken) {
       setState(() {
         _isAvailable = false;

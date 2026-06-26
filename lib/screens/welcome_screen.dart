@@ -56,7 +56,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     } else {
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => NamePickerScreen(prefill: user.displayName),
+          builder: (_) => NamePickerScreen(
+            prefill: user.displayName,
+            isOnboarding: true,
+          ),
         ),
       );
     }

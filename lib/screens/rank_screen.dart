@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/user_avatar.dart';
 
 // ── Data model ────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ class _Entry {
   final int score;
   final String country;
   final String avatarUrl;
+  final String avatarId;
 
   const _Entry({
     required this.uid,
@@ -20,6 +22,7 @@ class _Entry {
     required this.score,
     required this.country,
     required this.avatarUrl,
+    required this.avatarId,
   });
 
   factory _Entry.fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
@@ -30,6 +33,7 @@ class _Entry {
       score: (d['score'] as num?)?.toInt() ?? 0,
       country: (d['country'] as String?) ?? '',
       avatarUrl: (d['avatarUrl'] as String?) ?? '',
+      avatarId: (d['avatarId'] as String?) ?? '',
     );
   }
 }
@@ -148,14 +152,85 @@ class _FilterTabs extends StatelessWidget {
 
 // ── Leaderboard body (StreamBuilder) ─────────────────────────────────────────
 
-class _LeaderboardBody extends StatelessWidget {
+class _LeaderboardBody extends StatefulWidget {
   final int filterIndex;
 
   const _LeaderboardBody({required this.filterIndex});
 
   @override
+  State<_LeaderboardBody> createState() => _LeaderboardBodyState();
+}
+
+class _LeaderboardBodyState extends State<_LeaderboardBody> {
+  int? _userRank;
+  _Entry? _userEntry;
+  bool _fetchingRank = false;
+  int? _lastFetchedScore;
+
+  @override
+  void didUpdateWidget(_LeaderboardBody old) {
+    super.didUpdateWidget(old);
+    if (old.filterIndex != widget.filterIndex) {
+      setState(() {
+        _userRank = null;
+        _userEntry = null;
+        _lastFetchedScore = null;
+      });
+    }
+  }
+
+  Future<void> _fetchUserRank(String uid) async {
+    if (_fetchingRank) return;
+    _fetchingRank = true;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('leaderboard')
+          .doc(uid)
+          .get();
+      if (!mounted) return;
+      if (!doc.exists || doc.data() == null) {
+        setState(() { _userRank = null; _userEntry = null; });
+        return;
+      }
+      final data = doc.data()!;
+      final score = (data['score'] as num?)?.toInt() ?? 0;
+      final entry = _Entry(
+        uid: uid,
+        username: (data['displayName'] as String?) ??
+            (data['username'] as String?) ??
+            'Player',
+        score: score,
+        country: (data['country'] as String?) ?? '',
+        avatarUrl: (data['avatarUrl'] as String?) ?? '',
+        avatarId: (data['avatarId'] as String?) ?? '',
+      );
+      // Skip the expensive count aggregation if the score hasn't changed.
+      if (score == _lastFetchedScore && _userRank != null) {
+        if (mounted &&
+            (_userEntry?.username != entry.username ||
+                _userEntry?.avatarId != entry.avatarId)) {
+          setState(() => _userEntry = entry);
+        }
+        return;
+      }
+      final rank = await UserService.getUserRank(uid, score);
+      if (!mounted) return;
+      setState(() {
+        _userRank = rank;
+        _userEntry = entry;
+        _lastFetchedScore = score;
+      });
+    } catch (_) {
+    } finally {
+      _fetchingRank = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currentUid = AuthService.currentUser?.uid;
+    final bottomInsets = MediaQuery.of(context).padding.bottom;
+    const navBarHeight = 60.0;
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: UserService.leaderboardStream(),
@@ -172,13 +247,38 @@ class _LeaderboardBody extends StatelessWidget {
         var entries = (snapshot.data?.docs ?? []).map(_Entry.fromDoc).toList();
 
         // Canada tab: client-side filter
-        if (filterIndex == 1) {
+        if (widget.filterIndex == 1) {
           entries = entries.where((e) => e.country == 'CA').toList();
+        }
+
+        final inList =
+            currentUid != null && entries.any((e) => e.uid == currentUid);
+        final showSticky = widget.filterIndex == 0 &&
+            currentUid != null &&
+            !inList &&
+            _userRank != null &&
+            _userEntry != null;
+
+        // Schedule rank lookup on the Worldwide tab when user isn't in top 50.
+        if (widget.filterIndex == 0 && currentUid != null && !inList) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _fetchUserRank(currentUid);
+          });
+        } else if (inList && (_userRank != null || _userEntry != null)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _userRank = null;
+                _userEntry = null;
+                _lastFetchedScore = null;
+              });
+            }
+          });
         }
 
         if (entries.isEmpty) {
           return _EmptyState(
-            message: filterIndex == 1
+            message: widget.filterIndex == 1
                 ? 'No Canadian players yet.'
                 : 'No scores yet — play a game!',
           );
@@ -187,22 +287,42 @@ class _LeaderboardBody extends StatelessWidget {
         final podium = entries.take(3).toList();
         final rest = entries.length > 3 ? entries.sublist(3) : <_Entry>[];
 
-        return Column(
+        // Bottom padding ensures the last list item is never hidden behind the
+        // nav bar (60px) or the sticky card (~72px) when it is visible.
+        final stickyCardHeight = showSticky ? 72.0 + 8 : 0.0;
+        final listBottomPadding =
+            bottomInsets + navBarHeight + 8 + stickyCardHeight;
+
+        return Stack(
           children: [
-            _Podium(entries: podium, currentUid: currentUid),
-            const SizedBox(height: 16),
-            const Divider(color: AppTheme.divider, height: 1),
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.only(top: 8, bottom: MediaQuery.of(context).padding.bottom),
-                itemCount: rest.length,
-                itemBuilder: (context, i) => _PlayerRow(
-                  entry: rest[i],
-                  rank: i + 4,
-                  isCurrentUser: rest[i].uid == currentUid,
+            Column(
+              children: [
+                _Podium(entries: podium, currentUid: currentUid),
+                const SizedBox(height: 16),
+                const Divider(color: AppTheme.divider, height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(top: 8, bottom: listBottomPadding),
+                    itemCount: rest.length,
+                    itemBuilder: (context, i) => _PlayerRow(
+                      entry: rest[i],
+                      rank: i + 4,
+                      isCurrentUser: rest[i].uid == currentUid,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (showSticky)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: bottomInsets + navBarHeight + 8,
+                child: _StickyYourRankCard(
+                  entry: _userEntry!,
+                  rank: _userRank!,
                 ),
               ),
-            ),
           ],
         );
       },
@@ -331,22 +451,12 @@ class _PodiumCard extends StatelessWidget {
           const SizedBox(height: 6),
 
           // Avatar
-          CircleAvatar(
+          UserAvatar(
+            avatarId: entry.avatarId.isNotEmpty ? entry.avatarId : null,
+            googlePhotoUrl: entry.avatarUrl,
             radius: avatarRadius,
+            initial: entry.username.isNotEmpty ? entry.username[0] : '?',
             backgroundColor: accentColor,
-            backgroundImage: entry.avatarUrl.isNotEmpty
-                ? NetworkImage(entry.avatarUrl)
-                : null,
-            child: entry.avatarUrl.isEmpty
-                ? Text(
-                    entry.username.isNotEmpty
-                        ? entry.username[0].toUpperCase()
-                        : '?',
-                    style: AppTheme.podiumName.copyWith(
-                      fontSize: isFirst ? 22 : 18,
-                    ),
-                  )
-                : null,
           ),
           const SizedBox(height: 8),
 
@@ -412,22 +522,12 @@ class _PlayerRow extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(width: 28, child: Text('$rank', style: AppTheme.rankNumber)),
-          CircleAvatar(
+          UserAvatar(
+            avatarId: entry.avatarId.isNotEmpty ? entry.avatarId : null,
+            googlePhotoUrl: entry.avatarUrl,
             radius: 18,
+            initial: entry.username.isNotEmpty ? entry.username[0] : '?',
             backgroundColor: accentColor,
-            backgroundImage: entry.avatarUrl.isNotEmpty
-                ? NetworkImage(entry.avatarUrl)
-                : null,
-            child: entry.avatarUrl.isEmpty
-                ? Text(
-                    entry.username.isNotEmpty
-                        ? entry.username[0].toUpperCase()
-                        : '?',
-                    style: AppTheme.playerName.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  )
-                : null,
           ),
           const SizedBox(width: 12),
           Expanded(child: Text(entry.username, style: AppTheme.playerName)),
@@ -440,6 +540,74 @@ class _PlayerRow extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(_fmt(entry.score), style: AppTheme.score),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Sticky "Your Rank" card (shown when user is outside top 50) ──────────────
+
+class _StickyYourRankCard extends StatelessWidget {
+  final _Entry entry;
+  final int rank;
+
+  const _StickyYourRankCard({required this.entry, required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor = _avatarColor(entry.uid);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.skyBlue,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.electricBlue, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.electricBlue.withAlpha(50),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 36,
+            child: Text(
+              '#$rank',
+              style: AppTheme.rankNumber
+                  .copyWith(color: AppTheme.electricBlue, fontSize: 13),
+            ),
+          ),
+          UserAvatar(
+            avatarId: entry.avatarId.isNotEmpty ? entry.avatarId : null,
+            googlePhotoUrl: entry.avatarUrl,
+            radius: 18,
+            initial: entry.username.isNotEmpty ? entry.username[0] : '?',
+            backgroundColor: accentColor,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              entry.username,
+              style: AppTheme.playerName
+                  .copyWith(color: AppTheme.electricBlue),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Row(
+            children: [
+              Icon(Icons.star_rounded, color: AppTheme.electricBlue, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                _fmt(entry.score),
+                style: AppTheme.score.copyWith(color: AppTheme.electricBlue),
+              ),
             ],
           ),
         ],

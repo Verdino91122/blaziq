@@ -25,6 +25,8 @@ dependencies:
   curved_navigation_bar: ^1.0.6
   flutter_svg: ^2.0.0
   lottie: ^3.3.3
+  package_info_plus: ^8.0.0
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -61,3 +63,4 @@ flutter:
     - assets/sounds/
     - assets/data/
     - assets/animations/
+    - assets/avatars/

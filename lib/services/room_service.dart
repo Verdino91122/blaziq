@@ -209,6 +209,43 @@ class RoomService {
     return [...easy, ...medium, ...hard];
   }
 
+  // All valid avatar group numbers (Group 45 is missing from the asset set).
+  static const _avatarNums = [
+    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,
+    21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,
+    39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,
+    58,59,60,61,62,63,64,65,66,
+  ];
+
+  /// Resolves the avatar string to store in a room doc.
+  /// Returns an `avatar_N` id for SVG assets, an HTTP URL for Google photos,
+  /// or a deterministic default avatar for users who haven't picked one.
+  static String _resolveAvatar(Map<String, dynamic> userData, User user) {
+    final avatarId = (userData['avatarId'] as String?) ?? '';
+    if (avatarId.startsWith('avatar_')) return avatarId;
+    if (avatarId == 'google' || (user.photoURL?.isNotEmpty ?? false)) {
+      return user.photoURL ?? '';
+    }
+    // No avatar configured: assign a deterministic one based on UID so every
+    // player always shows a real avatar instead of invisible initials.
+    final idx = user.uid.codeUnits.fold(0, (a, b) => a + b) % _avatarNums.length;
+    return 'avatar_${_avatarNums[idx]}';
+  }
+
+  /// Re-syncs the current player's avatar into the room doc.
+  /// Call this from LobbyScreen to fix stale data in rooms created before
+  /// avatar support was added.
+  static Future<void> syncPlayerAvatar({
+    required String roomId,
+    required User user,
+    required Map<String, dynamic> userData,
+    required bool isHost,
+  }) async {
+    final avatar = _resolveAvatar(userData, user);
+    final field = isHost ? 'hostAvatar' : 'guestAvatar';
+    await _db.collection('rooms').doc(roomId).update({field: avatar});
+  }
+
   /// Creates a new room and returns the room ID.
   static Future<String> createRoom({
     required User host,
@@ -222,7 +259,7 @@ class RoomService {
     await _db.collection('rooms').doc(roomId).set({
       'hostUid': host.uid,
       'hostName': hostData['displayName'] ?? hostData['username'] ?? 'Player',
-      'hostAvatar': host.photoURL ?? '',
+      'hostAvatar': _resolveAvatar(hostData, host),
       'hostLevel': (hostData['level'] as num?)?.toInt() ?? 1,
       'hostScore': 0,
       'hostCorrect': 0,
@@ -278,7 +315,7 @@ class RoomService {
       tx.update(ref, {
         'guestUid': guest.uid,
         'guestName': guestData['displayName'] ?? guestData['username'] ?? 'Player',
-        'guestAvatar': guest.photoURL ?? '',
+        'guestAvatar': _resolveAvatar(guestData, guest),
         'guestLevel': (guestData['level'] as num?)?.toInt() ?? 1,
         'guestConnected': FieldValue.serverTimestamp(),
         'status': 'lobby',
@@ -596,7 +633,14 @@ class RoomService {
     } catch (_) {}
   }
 
-  /// Handles a player leaving. If host leaves before game, deletes room.
+  /// Handles a player leaving the room.
+  ///
+  /// Pre-game (waiting / lobby):
+  ///   - Guest leaves → clear guest slot, reset to 'waiting' so anyone can rejoin.
+  ///   - Host leaves with guest present → promote guest to host, keep room alive.
+  ///   - Host leaves with no guest → delete the room.
+  ///
+  /// Mid-game: award win to the other player (existing behaviour).
   static Future<void> leaveRoom(String roomId, String uid) async {
     try {
       final snap = await _db.collection('rooms').doc(roomId).get();
@@ -604,11 +648,54 @@ class RoomService {
       final d = snap.data()!;
       final isHost = d['hostUid'] == uid;
       final status = d['status'] as String? ?? '';
-      if (isHost && (status == 'waiting' || status == 'lobby')) {
-        await _db.collection('rooms').doc(roomId).delete();
+      final guestUid = d['guestUid'] as String?;
+
+      if (status == 'waiting' || status == 'lobby') {
+        if (!isHost) {
+          // Guest leaves pre-game — clear guest slot, reopen room for someone new.
+          // Also clears hostReady so a new guest doesn't trigger an instant countdown.
+          await _db.collection('rooms').doc(roomId).update({
+            'guestUid': null,
+            'guestName': null,
+            'guestAvatar': null,
+            'guestLevel': null,
+            'guestScore': 0,
+            'guestCorrect': 0,
+            'guestReady': false,
+            'guestConnected': null,
+            'hostReady': false,
+            'status': 'waiting',
+          });
+        } else if (guestUid != null) {
+          // Host leaves with guest present — promote the guest to host so the
+          // room stays alive with the same room code.
+          await _db.collection('rooms').doc(roomId).update({
+            'hostUid': guestUid,
+            'hostName': d['guestName'],
+            'hostAvatar': d['guestAvatar'],
+            'hostLevel': d['guestLevel'] ?? 1,
+            'hostScore': 0,
+            'hostCorrect': 0,
+            'hostReady': false,
+            'hostConnected': d['guestConnected'],
+            'guestUid': null,
+            'guestName': null,
+            'guestAvatar': null,
+            'guestLevel': null,
+            'guestScore': 0,
+            'guestCorrect': 0,
+            'guestReady': false,
+            'guestConnected': null,
+            'status': 'waiting',
+          });
+        } else {
+          // Host leaves with no guest — delete the room entirely.
+          await _db.collection('rooms').doc(roomId).delete();
+        }
       } else {
+        // Game in progress — award win to the remaining player.
         final otherId =
-            isHost ? d['guestUid'] as String? : d['hostUid'] as String?;
+            isHost ? guestUid : (d['hostUid'] as String?);
         await endGame(roomId, winnerId: otherId);
       }
     } catch (_) {}

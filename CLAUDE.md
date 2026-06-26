@@ -20,6 +20,8 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - shared_preferences ^2.3.0 for persisting settings (sounds, music, haptics)
 - flutter_svg ^2.0.0 for SVG icon rendering (google.svg, guest.svg in assets/icons/)
 - lottie ^3.3.3 for animated background (assets/animations/background.json on all main screens and onboarding)
+- package_info_plus ^8.0.0 for reading app version at runtime (used in AboutScreen); wrapped in try/catch with '1.0.0' fallback (PackageInfo can throw on Chrome debug)
+- url_launcher ^6.3.0 for opening mailto: and https:// links (used in AboutScreen); AndroidManifest queries added for https + mailto schemes; use LaunchMode.platformDefault (not externalApplication) + skip canLaunchUrl (returns false for mailto: on Chrome)
 - State management: Provider or simple StatefulWidget — nothing heavier
 
 ## Design System
@@ -218,6 +220,8 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
 - Players 4th+ as scrollable list below; each row: rank, avatar, username, score
 - Current user's row highlighted: electricBlue border + subtle tint (both podium and list)
 - leaderboard collection updated by saveGameResult() using effectiveBest = max(score, currentBest)
+- leaderboardStream() capped at top 50 (.limit(50)); getUserRank(uid, score) uses Firestore count aggregation for rank outside top 50
+- Sticky "Your Rank" card: fixed above nav bar on Worldwide tab when current user is outside top 50; electricBlue border + skyBlue bg; disappears when user enters top 50
 - When online mode is added later, leaderboard will switch to online ratings
 
 ### Store Screen
@@ -244,7 +248,9 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
   - Sign Out — confirmation dialog, only functional when signed in with Google;
     guests see a SnackBar: "You are playing as a guest — no account to sign out of"
 - Section SUPPORT & INFORMATION:
-  - How To Play / About / Rate App / Share App — each shows "Coming Soon" SnackBar
+  - How To Play — opens HowToPlayScreen as a full-screen modal (showGeneralDialog, fade+scale entrance)
+  - About — opens AboutScreen as a full-screen modal (showGeneralDialog, fade+scale entrance); uses package_info_plus for version + url_launcher for email/legal links
+  - Rate App / Share App — each shows "Coming Soon" SnackBar
 
 ## Leaderboard Strategy
 - Phase 3-5: Leaderboard shows solo mode best scores only
@@ -381,7 +387,11 @@ This is the most complex feature — build after friend and online modes are com
 - Dispose all AnimationControllers and Timers in dispose()
 - Use if statements not Visibility widgets for conditional rendering
 - Streak indicator and floating feedback must use Stack/Positioned
-- Haptic calls must be synchronous — cache preference, never call async inside timer ticks
+- Haptic AND sound calls must be synchronous — cache preference, never call async inside timer ticks
+  - `_hapticsEnabled` cached at game start in `_SoloGameScreenState`
+  - `SoundService._soundsEnabled` / `SoundService._musicEnabled` cached via `SoundService.syncPreferences()` at game start
+  - `SoundService.applyPreferences()` updates the cache immediately when a Settings toggle fires (before async disk write completes)
+  - The Settings screen's `_loadPreferences()` also calls `applyPreferences()` so the cache is correct from app launch
 - Answer grid uses GridView.count with asymmetric BorderRadius.only(...) per cell position
 
 ## Flutter Code Standards
@@ -408,7 +418,9 @@ lib/
 │   ├── rank_screen.dart
 │   ├── store_screen.dart
 │   ├── menu_screen.dart
-│   └── solo_game_screen.dart
+│   ├── solo_game_screen.dart
+│   ├── how_to_play_screen.dart ← full-screen modal from Settings → How To Play; 4 sections with fade+scale entrance
+│   └── about_screen.dart      ← full-screen modal from Settings → About; logo, story, built-by, contact + legal links
 ├── widgets/
 │   └── animated_background.dart ← Lottie animated background (Stack + background.json);
 │                                   applied to all 5 nav screens + welcome + name_picker;

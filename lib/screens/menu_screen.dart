@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/preferences_service.dart';
+import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
+import 'about_screen.dart';
+import 'how_to_play_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   final VoidCallback onNavigateToProfile;
@@ -30,6 +33,7 @@ class _MenuScreenState extends State<MenuScreen> {
     final sounds = await PreferencesService.getSoundsEnabled();
     final music = await PreferencesService.getMusicEnabled();
     final haptics = await PreferencesService.getHapticsEnabled();
+    SoundService.applyPreferences(soundsEnabled: sounds, musicEnabled: music);
     if (!mounted) return;
     setState(() {
       _soundEffects = sounds;
@@ -145,6 +149,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     value: _soundEffects,
                     onChanged: (v) {
                       setState(() => _soundEffects = v);
+                      SoundService.applyPreferences(soundsEnabled: v);
                       PreferencesService.setSoundsEnabled(v);
                     },
                   ),
@@ -154,6 +159,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     value: _bgMusic,
                     onChanged: (v) {
                       setState(() => _bgMusic = v);
+                      SoundService.applyPreferences(musicEnabled: v);
                       PreferencesService.setMusicEnabled(v);
                     },
                   ),
@@ -197,12 +203,24 @@ class _MenuScreenState extends State<MenuScreen> {
                   _ArrowRow(
                     icon: Icons.help_outline_rounded,
                     label: 'How To Play',
-                    onTap: () => _showComingSoon('How To Play'),
+                    onTap: () => showGeneralDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      barrierColor: Colors.transparent,
+                      pageBuilder: (context, anim1, anim2) =>
+                          const HowToPlayScreen(),
+                    ),
                   ),
                   _ArrowRow(
                     icon: Icons.info_outline_rounded,
                     label: 'About',
-                    onTap: () => _showComingSoon('About'),
+                    onTap: () => showGeneralDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      barrierColor: Colors.transparent,
+                      pageBuilder: (context, anim1, anim2) =>
+                          const AboutScreen(),
+                    ),
                   ),
                   _ArrowRow(
                     icon: Icons.star_border_rounded,

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Remove-Item \"C:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\build\" -Recurse -Force -Confirm:$false)"
+    ]
+  }
+}

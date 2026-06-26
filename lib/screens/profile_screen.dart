@@ -8,6 +8,8 @@ import '../services/display_name_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/user_avatar.dart';
+import 'avatar_picker_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -83,7 +85,12 @@ class _AnonView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        0,
+        24,
+        MediaQuery.of(context).padding.bottom,
+      ),
       child: Column(
         children: [
           const SizedBox(height: 24),
@@ -132,27 +139,7 @@ class _AnonView extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // Guest avatar
-          Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppTheme.mutedText.withAlpha(80),
-                width: 2,
-              ),
-            ),
-            child: const CircleAvatar(
-              radius: 45,
-              backgroundColor: AppTheme.cardSurface,
-              child: Icon(Icons.person, color: AppTheme.mutedText, size: 44),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Display name + stats from Firestore
+          // Avatar + name + stats from Firestore
           if (user != null)
             StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: UserService.userStream(user!.uid),
@@ -164,6 +151,12 @@ class _AnonView extends StatelessWidget {
                     'Guest_${user!.uid.substring(0, 6)}';
                 return Column(
                   children: [
+                    _ProfileAvatarSection(
+                      uid: user!.uid,
+                      avatarId: data?['avatarId'] as String?,
+                      googlePhotoUrl: null,
+                    ),
+                    const SizedBox(height: 16),
                     _NameRow(
                       uid: user!.uid,
                       displayName: displayName,
@@ -235,7 +228,7 @@ class _AnonView extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.star_rounded,
-                  color: AppTheme.blazeGold,
+                  color: Color.fromARGB(255, 255, 255, 255),
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -337,16 +330,26 @@ class _SignedInView extends StatelessWidget {
       stream: UserService.userStream(user.uid),
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
-        final displayName = (data?['displayName'] as String?) ??
+        final displayName =
+            (data?['displayName'] as String?) ??
             (data?['username'] as String?) ??
             user.displayName ??
             'Player';
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.of(context).padding.bottom),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            0,
+            24,
+            MediaQuery.of(context).padding.bottom,
+          ),
           child: Column(
             children: [
               const SizedBox(height: 40),
-              _Avatar(user: user),
+              _ProfileAvatarSection(
+                uid: user.uid,
+                avatarId: data?['avatarId'] as String?,
+                googlePhotoUrl: user.photoURL,
+              ),
               const SizedBox(height: 16),
               _NameRow(uid: user.uid, displayName: displayName, data: data),
               const SizedBox(height: 4),
@@ -360,15 +363,15 @@ class _SignedInView extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppTheme.sparkPink.withAlpha(30),
+                    color: AppTheme.sparkPink.withAlpha(80),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.sparkPink.withAlpha(80)),
+                    border: Border.all(color: AppTheme.sparkPink.withAlpha(30)),
                   ),
                   child: Text(
                     'SIGN OUT',
                     textAlign: TextAlign.center,
                     style: AppTheme.buttonLabel.copyWith(
-                      color: AppTheme.sparkPink,
+                      color: const Color.fromARGB(255, 249, 111, 22),
                     ),
                   ),
                 ),
@@ -434,10 +437,8 @@ class _NameRow extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ChangeNameSheet(
-        uid: uid,
-        currentDisplayName: displayName,
-      ),
+      builder: (_) =>
+          _ChangeNameSheet(uid: uid, currentDisplayName: displayName),
     );
   }
 }
@@ -448,10 +449,7 @@ class _ChangeNameSheet extends StatefulWidget {
   final String uid;
   final String currentDisplayName;
 
-  const _ChangeNameSheet({
-    required this.uid,
-    required this.currentDisplayName,
-  });
+  const _ChangeNameSheet({required this.uid, required this.currentDisplayName});
 
   @override
   State<_ChangeNameSheet> createState() => _ChangeNameSheetState();
@@ -532,8 +530,9 @@ class _ChangeNameSheetState extends State<_ChangeNameSheet> {
     setState(() {
       _isAvailable = available;
       _checking = false;
-      _suggestions =
-          available ? [] : DisplayNameService.generateSuggestions(name);
+      _suggestions = available
+          ? []
+          : DisplayNameService.generateSuggestions(name);
     });
   }
 
@@ -573,15 +572,18 @@ class _ChangeNameSheetState extends State<_ChangeNameSheet> {
     } else {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong. Please try again.')),
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
       );
     }
   }
 
   void _fillSuggestion(String name) {
     _ctrl.text = name;
-    _ctrl.selection =
-        TextSelection.fromPosition(TextPosition(offset: name.length));
+    _ctrl.selection = TextSelection.fromPosition(
+      TextPosition(offset: name.length),
+    );
   }
 
   @override
@@ -646,17 +648,23 @@ class _ChangeNameSheetState extends State<_ChangeNameSheet> {
                 if (!_canChange) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.softOrange,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: AppTheme.blazeOrange.withAlpha(100)),
+                        color: AppTheme.blazeOrange.withAlpha(100),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.timer_rounded,
-                            color: AppTheme.blazeOrange, size: 18),
+                        const Icon(
+                          Icons.timer_rounded,
+                          color: AppTheme.blazeOrange,
+                          size: 18,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -683,10 +691,10 @@ class _ChangeNameSheetState extends State<_ChangeNameSheet> {
                       color: !_canChange
                           ? AppTheme.deepGrey
                           : _validationError != null
-                              ? AppTheme.blazeOrange
-                              : _isAvailable == true
-                                  ? AppTheme.electricBlue
-                                  : AppTheme.deepGrey,
+                          ? AppTheme.blazeOrange
+                          : _isAvailable == true
+                          ? AppTheme.electricBlue
+                          : AppTheme.deepGrey,
                       width: 1.5,
                     ),
                   ),
@@ -700,7 +708,9 @@ class _ChangeNameSheetState extends State<_ChangeNameSheet> {
                       border: InputBorder.none,
                       counterText: '',
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       suffixIcon: _canChange ? _suffixIcon() : null,
                     ),
                   ),
@@ -726,27 +736,30 @@ class _ChangeNameSheetState extends State<_ChangeNameSheet> {
                       spacing: 8,
                       runSpacing: 8,
                       children: _suggestions
-                          .map((s) => GestureDetector(
-                                onTap: () => _fillSuggestion(s),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.softGrey,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border:
-                                        Border.all(color: AppTheme.deepGrey),
-                                  ),
-                                  child: Text(
-                                    s,
-                                    style: AppTheme.caption.copyWith(
-                                      color: AppTheme.electricBlue,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                    ),
+                          .map(
+                            (s) => GestureDetector(
+                              onTap: () => _fillSuggestion(s),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.softGrey,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppTheme.deepGrey),
+                                ),
+                                child: Text(
+                                  s,
+                                  style: AppTheme.caption.copyWith(
+                                    color: AppTheme.electricBlue,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
                                   ),
                                 ),
-                              ))
+                              ),
+                            ),
+                          )
                           .toList(),
                     ),
                   ],
@@ -800,60 +813,113 @@ class _ChangeNameSheetState extends State<_ChangeNameSheet> {
       );
     }
     if (_isAvailable == true) {
-      return const Icon(Icons.check_circle_rounded,
-          color: AppTheme.electricBlue, size: 20);
+      return const Icon(
+        Icons.check_circle_rounded,
+        color: AppTheme.electricBlue,
+        size: 20,
+      );
     }
     if (_isAvailable == false) {
-      return const Icon(Icons.cancel_rounded,
-          color: AppTheme.blazeOrange, size: 20);
+      return const Icon(
+        Icons.cancel_rounded,
+        color: AppTheme.blazeOrange,
+        size: 20,
+      );
     }
     return const SizedBox.shrink();
   }
 
   Widget _statusRow() {
     if (_checking) {
-      return Text('Checking...',
-          style: AppTheme.caption.copyWith(color: AppTheme.steel));
+      return Text(
+        'Checking...',
+        style: AppTheme.caption.copyWith(color: AppTheme.steel),
+      );
     }
     if (_isAvailable == true) {
-      return Text('✓ Available',
-          style: AppTheme.caption.copyWith(
-            color: AppTheme.electricBlue,
-            fontWeight: FontWeight.w700,
-          ));
+      return Text(
+        '✓ Available',
+        style: AppTheme.caption.copyWith(
+          color: AppTheme.electricBlue,
+          fontWeight: FontWeight.w700,
+        ),
+      );
     }
     if (_isAvailable == false) {
-      return Text('✗ Taken',
-          style: AppTheme.caption.copyWith(
-            color: AppTheme.blazeOrange,
-            fontWeight: FontWeight.w700,
-          ));
+      return Text(
+        '✗ Taken',
+        style: AppTheme.caption.copyWith(
+          color: AppTheme.blazeOrange,
+          fontWeight: FontWeight.w700,
+        ),
+      );
     }
     return const SizedBox(height: 14);
   }
 }
 
-class _Avatar extends StatelessWidget {
-  final User user;
-  const _Avatar({required this.user});
+class _ProfileAvatarSection extends StatelessWidget {
+  final String uid;
+  final String? avatarId;
+  final String? googlePhotoUrl;
+
+  const _ProfileAvatarSection({
+    required this.uid,
+    required this.avatarId,
+    required this.googlePhotoUrl,
+  });
+
+  void _openPicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AvatarPickerSheet(
+        uid: uid,
+        currentAvatarId: avatarId,
+        googlePhotoUrl: googlePhotoUrl,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final photoUrl = user.photoURL;
-    return Container(
-      width: 90,
-      height: 90,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.blazeGold, width: 2),
-      ),
-      child: CircleAvatar(
-        radius: 45,
-        backgroundColor: AppTheme.cardSurface,
-        backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-        child: photoUrl == null
-            ? const Icon(Icons.person, color: AppTheme.mutedText, size: 44)
-            : null,
+    return GestureDetector(
+      onTap: () => _openPicker(context),
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.blazeGold, width: 2),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: UserAvatar(
+                avatarId: avatarId,
+                googlePhotoUrl: googlePhotoUrl,
+                radius: 43,
+              ),
+            ),
+          ),
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppTheme.electricBlue,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: const Icon(
+              Icons.edit_rounded,
+              size: 13,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }

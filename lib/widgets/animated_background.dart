@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
+﻿import 'package:flutter/material.dart';
 
 class AnimatedBackground extends StatelessWidget {
   final Widget child;
@@ -7,17 +6,15 @@ class AnimatedBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Lottie.asset(
-          'assets/animations/background.json',
-          fit: BoxFit.cover,
-          repeat: true,
-          animate: true,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFCFEDDB), Color(0xFFDEEACD)],
         ),
-        child,
-      ],
+      ),
+      child: child,
     );
   }
 }

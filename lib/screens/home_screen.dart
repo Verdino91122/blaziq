@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_background.dart';
+import '../widgets/user_avatar.dart';
 import 'friend_mode_screen.dart';
 import 'solo_game_screen.dart';
-import '../widgets/animated_background.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -106,7 +107,8 @@ class _HeaderBar extends StatelessWidget {
       builder: (context, authSnap) {
         final user = authSnap.data;
         if (user == null) {
-          return _buildBar(context, coins: 0, xp: 0, level: 1, photoUrl: null);
+          return _buildBar(context,
+              coins: 0, xp: 0, level: 1, avatarId: null, googlePhotoUrl: null);
         }
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: UserService.userStream(user.uid),
@@ -117,7 +119,8 @@ class _HeaderBar extends StatelessWidget {
               coins: (data?['coins'] as int?) ?? 0,
               xp: (data?['xp'] as int?) ?? 0,
               level: (data?['level'] as int?) ?? 1,
-              photoUrl: user.photoURL,
+              avatarId: data?['avatarId'] as String?,
+              googlePhotoUrl: user.photoURL,
             );
           },
         );
@@ -130,7 +133,8 @@ class _HeaderBar extends StatelessWidget {
     required int coins,
     required int xp,
     required int level,
-    required String? photoUrl,
+    required String? avatarId,
+    required String? googlePhotoUrl,
   }) {
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
@@ -146,17 +150,13 @@ class _HeaderBar extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: AppTheme.blazeGold, width: 1.5),
             ),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: AppTheme.cardSurface,
-              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-              child: photoUrl == null
-                  ? const Icon(
-                      Icons.person,
-                      color: AppTheme.mutedText,
-                      size: 20,
-                    )
-                  : null,
+            child: Padding(
+              padding: const EdgeInsets.all(1.5),
+              child: UserAvatar(
+                avatarId: avatarId,
+                googlePhotoUrl: googlePhotoUrl,
+                radius: 16,
+              ),
             ),
           ),
           const SizedBox(width: 10),

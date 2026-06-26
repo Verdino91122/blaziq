@@ -11,6 +11,7 @@ import 'theme/app_theme.dart';
 import 'screens/main_shell.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/name_picker_screen.dart';
+import 'screens/avatar_picker_screen.dart';
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -104,9 +105,21 @@ class _AppRouterState extends State<_AppRouter> {
     final data = await UserService.getUserData(user.uid);
     final hasDisplayName = (data?['displayName'] as String? ?? '').isNotEmpty;
 
-    if (hasDisplayName) return const MainShell();
-    if (user.isAnonymous) return const WelcomeScreen();
-    return NamePickerScreen(prefill: user.displayName);
+    if (!hasDisplayName) {
+      if (user.isAnonymous) return const WelcomeScreen();
+      return NamePickerScreen(prefill: user.displayName, isOnboarding: true);
+    }
+
+    // Google users who completed name picker but haven't chosen an avatar yet
+    // are sent to the avatar picker as the final onboarding step.
+    if (!user.isAnonymous && (data?['avatarId'] as String? ?? '').isEmpty) {
+      return AvatarPickerScreen(
+        uid: user.uid,
+        googlePhotoUrl: user.photoURL,
+      );
+    }
+
+    return const MainShell();
   }
 
   @override

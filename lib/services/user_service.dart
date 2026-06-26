@@ -294,11 +294,16 @@ class UserService {
           'Player';
       final rawCountry = (data['country'] as String?) ?? '';
       final country = rawCountry.isNotEmpty ? rawCountry : await _detectCountry();
+      final storedAvatarId = (data['avatarId'] as String?) ?? '';
+      // avatarUrl param is the Google photo URL — only forward it when the
+      // user has chosen to display their Google photo.
+      final effectiveAvatarUrl = storedAvatarId == 'google' ? avatarUrl : '';
       await updateLeaderboard(
         uid: uid,
         score: effectiveBest,
         displayName: displayName,
-        avatarUrl: avatarUrl,
+        avatarUrl: effectiveAvatarUrl,
+        avatarId: storedAvatarId,
         country: country,
       );
     }
@@ -314,6 +319,7 @@ class UserService {
     required String displayName,
     required String avatarUrl,
     required String country,
+    String avatarId = '',
   }) async {
     final ref = _db.collection('leaderboard').doc(uid);
     final existing = await ref.get();
@@ -324,6 +330,7 @@ class UserService {
         'score': score,
         'country': country,
         'avatarUrl': avatarUrl,
+        'avatarId': avatarId,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }
@@ -341,12 +348,50 @@ class UserService {
     } catch (_) {}
   }
 
-  /// Live stream of the leaderboard collection ordered by score descending.
+  /// Saves the user's chosen [avatarId] to their profile and syncs to leaderboard.
+  /// - "avatar_N" → SVG asset
+  /// - "google"   → Google profile photo (pass [googlePhotoUrl] for leaderboard sync)
+  static Future<void> updateAvatar({
+    required String uid,
+    required String avatarId,
+    String googlePhotoUrl = '',
+  }) async {
+    await _db.collection('users').doc(uid).set(
+      {'avatarId': avatarId},
+      SetOptions(merge: true),
+    );
+    try {
+      final leaderboardUpdate = <String, dynamic>{'avatarId': avatarId};
+      if (avatarId == 'google' && googlePhotoUrl.isNotEmpty) {
+        leaderboardUpdate['avatarUrl'] = googlePhotoUrl;
+      } else if (avatarId.startsWith('avatar_')) {
+        leaderboardUpdate['avatarUrl'] = '';
+      }
+      await _db
+          .collection('leaderboard')
+          .doc(uid)
+          .set(leaderboardUpdate, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  /// Live stream of the top-50 leaderboard entries ordered by score descending.
   static Stream<QuerySnapshot<Map<String, dynamic>>> leaderboardStream() {
     return _db
         .collection('leaderboard')
         .orderBy('score', descending: true)
+        .limit(50)
         .snapshots();
+  }
+
+  /// Returns the rank of [uid] in the global leaderboard by counting how many
+  /// entries have a strictly higher score, then adding 1.
+  static Future<int> getUserRank(String uid, int userScore) async {
+    final result = await _db
+        .collection('leaderboard')
+        .where('score', isGreaterThan: userScore)
+        .count()
+        .get();
+    return (result.count ?? 0) + 1;
   }
 
   // ── Username repair ───────────────────────────────────────────────────────

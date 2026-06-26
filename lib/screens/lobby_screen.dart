@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/auth_service.dart';
 import '../services/room_service.dart';
+import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/user_avatar.dart';
 import 'friend_game_screen.dart';
 
 class LobbyScreen extends StatefulWidget {
@@ -33,13 +36,38 @@ class _LobbyScreenState extends State<LobbyScreen>
   String _pendingCategory = 'science';
   bool _myReady = false;
 
+  // Role tracking: starts from widget.isHost; updates when the current user
+  // gets promoted from guest to host after the original host leaves the lobby.
+  bool _amHost = false;
+  bool _promotionTriggered = false;
+
+  // Guest departure notification: track the last known guest UID/name so we
+  // can show a snackbar when they leave.
+  String? _trackedGuestUid;
+  String? _trackedGuestName;
+
   @override
   void initState() {
     super.initState();
+    _amHost = widget.isHost;
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
+    _syncAvatar();
+  }
+
+  Future<void> _syncAvatar() async {
+    final user = AuthService.currentUser;
+    if (user == null) return;
+    final userData = await UserService.getUserData(user.uid);
+    if (userData == null) return;
+    await RoomService.syncPlayerAvatar(
+      roomId: widget.roomId,
+      user: user,
+      userData: userData,
+      isHost: widget.isHost,
+    );
   }
 
   @override
@@ -78,7 +106,7 @@ class _LobbyScreenState extends State<LobbyScreen>
         builder: (_) => FriendGameScreen(
           roomId: widget.roomId,
           myUid: widget.myUid,
-          isHost: widget.isHost,
+          isHost: _amHost,
           hostName: room.hostName,
           guestName: room.guestName ?? 'Player',
         ),
@@ -106,7 +134,7 @@ class _LobbyScreenState extends State<LobbyScreen>
             style: AppTheme.subheading.copyWith(fontSize: 20),
             textAlign: TextAlign.center),
         content: Text(
-          widget.isHost
+          _amHost
               ? 'Leaving will delete the room for everyone.'
               : 'You will leave the room.',
           style: AppTheme.bodyMuted,
@@ -210,9 +238,53 @@ class _LobbyScreenState extends State<LobbyScreen>
           final data = snap.data?.data();
           final room = data != null ? RoomData.fromSnapshot(data) : null;
 
+          if (room != null) {
+            // ── Guest departure notification (host sees opponent leave) ──────
+            if (_amHost &&
+                _trackedGuestUid != null &&
+                room.guestUid == null) {
+              final leaverName = _trackedGuestName ?? 'Your opponent';
+              _trackedGuestUid = null;
+              _trackedGuestName = null;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('$leaverName left the room.'),
+                    backgroundColor: AppTheme.blazeOrange,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 3),
+                  ));
+                }
+              });
+            }
+            // Keep guest tracking up to date
+            if (room.guestUid != null) {
+              _trackedGuestUid = room.guestUid;
+              _trackedGuestName = room.guestName;
+            }
+
+            // ── Host-leaves promotion: current user becomes the new host ─────
+            if (!_amHost &&
+                !_promotionTriggered &&
+                room.hostUid == widget.myUid) {
+              _promotionTriggered = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() => _amHost = true);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: const Text('The host left. You are now the host!'),
+                    backgroundColor: AppTheme.electricBlue,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 3),
+                  ));
+                }
+              });
+            }
+          }
+
           // Sync local ready state from Firestore on first load
           if (room != null && !_showCountdown) {
-            final firestoreReady = widget.isHost ? room.hostReady : room.guestReady;
+            final firestoreReady = _amHost ? room.hostReady : room.guestReady;
             if (firestoreReady != _myReady) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) setState(() => _myReady = firestoreReady);
@@ -253,7 +325,8 @@ class _LobbyScreenState extends State<LobbyScreen>
   }
 
   Widget _buildBody(RoomData? room) {
-    return Column(
+    return SingleChildScrollView(
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Top bar
@@ -458,7 +531,7 @@ class _LobbyScreenState extends State<LobbyScreen>
           child: Text('CATEGORY', style: AppTheme.sectionHeader),
         ),
         const SizedBox(height: 12),
-        if (widget.isHost)
+        if (_amHost)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
@@ -558,7 +631,7 @@ class _LobbyScreenState extends State<LobbyScreen>
             ),
           ),
 
-        const Spacer(),
+        const SizedBox(height: 24),
 
         // Ready button
         Padding(
@@ -599,7 +672,7 @@ class _LobbyScreenState extends State<LobbyScreen>
 
         // Leave button
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
           child: GestureDetector(
             onTap: _confirmLeave,
             child: Container(
@@ -619,6 +692,7 @@ class _LobbyScreenState extends State<LobbyScreen>
           ),
         ),
       ],
+    ),
     );
   }
 
@@ -676,6 +750,20 @@ class _PlayerSlot extends StatelessWidget {
     required this.pulse,
   });
 
+  static Widget _buildAvatar(String avatar, String name, double radius) {
+    if (avatar.startsWith('avatar_')) {
+      return UserAvatar(avatarId: avatar, radius: radius, initial: name.isNotEmpty ? name[0] : '?');
+    }
+    if (avatar.startsWith('http')) {
+      return UserAvatar(avatarId: 'google', googlePhotoUrl: avatar, radius: radius, initial: name.isNotEmpty ? name[0] : '?');
+    }
+    return UserAvatar(
+      radius: radius,
+      initial: name.isNotEmpty ? name[0] : '?',
+      backgroundColor: AppTheme.electricBlue.withAlpha(180),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -693,19 +781,7 @@ class _PlayerSlot extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: AppTheme.electricBlue.withAlpha(40),
-            backgroundImage:
-                avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-            child: avatarUrl.isEmpty
-                ? Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                    style: AppTheme.subheading
-                        .copyWith(color: AppTheme.electricBlue),
-                  )
-                : null,
-          ),
+          _buildAvatar(avatarUrl, name, 24),
           const SizedBox(height: 8),
           Text(
             name.split(' ').first,

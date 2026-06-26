@@ -27,7 +27,10 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(cp \"C:/Users/user/Documents/google.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/google.svg\")",
       "Bash(cp \"C:/Users/user/Documents/guest.svg\" \"C:/Users/user/Documents/Blaziq/assets/icons/guest.svg\")",
-      "Bash(dart analyze *)"
+      "Bash(dart analyze *)",
+      "Bash(dir \"C:\\\\Users\\\\user\\\\Documents\\\\avatars\\\\avatars\")",
+      "Bash(dir \"C:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\assets\")",
+      "PowerShell(Get-PSDrive C | Select-Object Used, Free | ForEach-Object { \"Used: $\\([math]::Round\\($_.Used/1GB,1\\)\\) GB  Free: $\\([math]::Round\\($_.Free/1GB,1\\)\\) GB\" })"
     ]
   }
 }

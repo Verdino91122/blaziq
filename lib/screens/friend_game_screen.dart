@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../services/room_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/user_avatar.dart';
 import 'lobby_screen.dart';
 
 class FriendGameScreen extends StatefulWidget {
@@ -606,13 +607,19 @@ class _FriendGameScreenState extends State<FriendGameScreen>
           opponentUid != null ? room.scoreFor(opponentUid) : 0;
       final opponentName =
           widget.isHost ? (room.guestName ?? 'Opponent') : room.hostName;
+      final myAvatarUrl =
+          widget.isHost ? room.hostAvatar : (room.guestAvatar ?? '');
+      final opponentAvatarUrl =
+          widget.isHost ? (room.guestAvatar ?? '') : room.hostAvatar;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => _FriendResultsScreen(
             myUid: widget.myUid,
             myName: _myName,
+            myAvatarUrl: myAvatarUrl,
             opponentName: opponentName,
+            opponentAvatarUrl: opponentAvatarUrl,
             myScore: myScore,
             opponentScore: opponentScore,
             isWinner: true,
@@ -643,6 +650,10 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     final opponentName = widget.isHost
         ? (room.guestName ?? 'Opponent')
         : room.hostName;
+    final myAvatarUrl =
+        widget.isHost ? room.hostAvatar : (room.guestAvatar ?? '');
+    final opponentAvatarUrl =
+        widget.isHost ? (room.guestAvatar ?? '') : room.hostAvatar;
     final isWinner = myScore > opponentScore;
     final isTie = myScore == opponentScore;
 
@@ -652,7 +663,9 @@ class _FriendGameScreenState extends State<FriendGameScreen>
         builder: (_) => _FriendResultsScreen(
           myUid: widget.myUid,
           myName: _myName,
+          myAvatarUrl: myAvatarUrl,
           opponentName: opponentName,
+          opponentAvatarUrl: opponentAvatarUrl,
           myScore: myScore,
           opponentScore: opponentScore,
           isWinner: isWinner,
@@ -1588,6 +1601,20 @@ class _ScoreCard extends StatelessWidget {
     required this.isWinning,
   });
 
+  static Widget _buildAvatar(String avatar, String name, double radius) {
+    if (avatar.startsWith('avatar_')) {
+      return UserAvatar(avatarId: avatar, radius: radius, initial: name.isNotEmpty ? name[0] : '?');
+    }
+    if (avatar.startsWith('http')) {
+      return UserAvatar(avatarId: 'google', googlePhotoUrl: avatar, radius: radius, initial: name.isNotEmpty ? name[0] : '?');
+    }
+    return UserAvatar(
+      radius: radius,
+      initial: name.isNotEmpty ? name[0] : '?',
+      backgroundColor: AppTheme.electricBlue.withAlpha(180),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
@@ -1607,20 +1634,7 @@ class _ScoreCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: AppTheme.electricBlue.withAlpha(40),
-            backgroundImage: avatarUrl.isNotEmpty
-                ? NetworkImage(avatarUrl)
-                : null,
-            child: avatarUrl.isEmpty
-                ? Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                    style: AppTheme.caption
-                        .copyWith(color: AppTheme.electricBlue),
-                  )
-                : null,
-          ),
+          _buildAvatar(avatarUrl, name, 16),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1658,7 +1672,9 @@ class _ScoreCard extends StatelessWidget {
 class _FriendResultsScreen extends StatefulWidget {
   final String myUid;
   final String myName;
+  final String myAvatarUrl;
   final String opponentName;
+  final String opponentAvatarUrl;
   final int myScore;
   final int opponentScore;
   final bool isWinner;
@@ -1672,7 +1688,9 @@ class _FriendResultsScreen extends StatefulWidget {
   const _FriendResultsScreen({
     required this.myUid,
     required this.myName,
+    required this.myAvatarUrl,
     required this.opponentName,
+    required this.opponentAvatarUrl,
     required this.myScore,
     required this.opponentScore,
     required this.isWinner,
@@ -1778,6 +1796,7 @@ class _FriendResultsScreenState extends State<_FriendResultsScreen> {
                       children: [
                         _ScoreColumn(
                           name: widget.myName,
+                          avatarUrl: widget.myAvatarUrl,
                           score: widget.myScore,
                           highlight: widget.isWinner || widget.isTie,
                         ),
@@ -1786,6 +1805,7 @@ class _FriendResultsScreenState extends State<_FriendResultsScreen> {
                                 .copyWith(color: AppTheme.steel)),
                         _ScoreColumn(
                           name: widget.opponentName,
+                          avatarUrl: widget.opponentAvatarUrl,
                           score: widget.opponentScore,
                           highlight: !widget.isWinner || widget.isTie,
                         ),
@@ -1906,20 +1926,45 @@ class _FriendResultsScreenState extends State<_FriendResultsScreen> {
 
 class _ScoreColumn extends StatelessWidget {
   final String name;
+  final String avatarUrl;
   final int score;
   final bool highlight;
 
   const _ScoreColumn({
     required this.name,
+    required this.avatarUrl,
     required this.score,
     required this.highlight,
   });
+
+  static Widget _buildAvatar(String avatar, String name, double radius) {
+    if (avatar.startsWith('avatar_')) {
+      return UserAvatar(
+          avatarId: avatar,
+          radius: radius,
+          initial: name.isNotEmpty ? name[0] : '?');
+    }
+    if (avatar.startsWith('http')) {
+      return UserAvatar(
+          avatarId: 'google',
+          googlePhotoUrl: avatar,
+          radius: radius,
+          initial: name.isNotEmpty ? name[0] : '?');
+    }
+    return UserAvatar(
+      radius: radius,
+      initial: name.isNotEmpty ? name[0] : '?',
+      backgroundColor: AppTheme.electricBlue.withAlpha(180),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _buildAvatar(avatarUrl, name, 28),
+        const SizedBox(height: 6),
         Text(
           name.split(' ').first,
           style: AppTheme.bodyMuted.copyWith(color: AppTheme.steel),

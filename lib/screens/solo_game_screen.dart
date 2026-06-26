@@ -276,6 +276,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     });
 
     PreferencesService.getHapticsEnabled().then((v) => _hapticsEnabled = v);
+    SoundService.syncPreferences();  // prime the cache before game starts
 
     final user = AuthService.currentUser;
     if (user != null) {

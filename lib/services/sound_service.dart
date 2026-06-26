@@ -12,6 +12,24 @@ class SoundService {
 
   static bool _initialized = false;
 
+  // Cached preference values — updated at game start and on every toggle change.
+  // Synchronous checks here match the same pattern used for haptics per CLAUDE.md.
+  static bool _soundsEnabled = true;
+  static bool _musicEnabled = true;
+
+  /// Load both preferences from disk. Call at game start and after Settings changes.
+  static Future<void> syncPreferences() async {
+    _soundsEnabled = await PreferencesService.getSoundsEnabled();
+    _musicEnabled = await PreferencesService.getMusicEnabled();
+  }
+
+  /// Update cached values immediately (called by the Settings toggle before the
+  /// async disk write completes, so play calls see the new state right away).
+  static void applyPreferences({bool? soundsEnabled, bool? musicEnabled}) {
+    if (soundsEnabled != null) _soundsEnabled = soundsEnabled;
+    if (musicEnabled != null) _musicEnabled = musicEnabled;
+  }
+
   /// Configures all players once.
   /// SFX players use AndroidAudioFocus.none so they never steal focus from
   /// the background music player — Android then mixes the streams together.
@@ -39,8 +57,8 @@ class SoundService {
   }
 
   static Future<void> playCorrect() async {
+    if (!_soundsEnabled) return;
     try {
-      if (!await PreferencesService.getSoundsEnabled()) return;
       await _ensureInit();
       await _correctPlayer.stop();
       await _correctPlayer.play(AssetSource('sounds/correct.wav'));
@@ -50,8 +68,8 @@ class SoundService {
   }
 
   static Future<void> playWrong() async {
+    if (!_soundsEnabled) return;
     try {
-      if (!await PreferencesService.getSoundsEnabled()) return;
       await _ensureInit();
       await _wrongPlayer.stop();
       await _wrongPlayer.play(AssetSource('sounds/wrong.mp3'));
@@ -61,8 +79,8 @@ class SoundService {
   }
 
   static Future<void> playLevelUp() async {
+    if (!_soundsEnabled) return;
     try {
-      if (!await PreferencesService.getSoundsEnabled()) return;
       await _ensureInit();
       await _levelUpPlayer.stop();
       await _levelUpPlayer.play(AssetSource('sounds/levelup.wav'));
@@ -72,8 +90,8 @@ class SoundService {
   }
 
   static Future<void> playGameOver() async {
+    if (!_soundsEnabled) return;
     try {
-      if (!await PreferencesService.getSoundsEnabled()) return;
       await _ensureInit();
       await _gameOverPlayer.stop();
       await _gameOverPlayer.play(AssetSource('sounds/gameover.wav'));
@@ -83,8 +101,8 @@ class SoundService {
   }
 
   static Future<void> startBackgroundMusic() async {
+    if (!_musicEnabled) return;
     try {
-      if (!await PreferencesService.getMusicEnabled()) return;
       await _ensureInit();
       await _bgMusicPlayer.stop();
       await _bgMusicPlayer.setVolume(0.4);
@@ -103,8 +121,8 @@ class SoundService {
   }
 
   static Future<void> startTicToc() async {
+    if (!_soundsEnabled) return;
     try {
-      if (!await PreferencesService.getSoundsEnabled()) return;
       await _ensureInit();
       await _ticTocPlayer.stop();
       await _ticTocPlayer.play(AssetSource('sounds/tictoc.wav'));
