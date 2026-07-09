@@ -54,45 +54,51 @@ class _HomeScreenState extends State<HomeScreen> {
           top: false,
           bottom: false,
           child: LayoutBuilder(
-          builder: (context, constraints) {
-            // 52% of the SafeArea-adjusted available height goes to the card
-            // carousel. Percentage-based so it adapts to any screen size without
-            // relying on a brittle fixed-content estimate.
-            final cardHeight =
-                (constraints.maxHeight * 0.52).clamp(220.0, 460.0);
-            return SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-              child: Column(
-                children: [
-                  const _HeaderBar(),
-                  const SizedBox(height: 28),
-                  _BrainLogoSection(
-                    cheatMode: _cheatMode,
-                    onCheatToggle: () =>
-                        setState(() => _cheatMode = !_cheatMode),
-                  ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    height: cardHeight,
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: 3,
-                      onPageChanged: (i) => setState(() => _currentPage = i),
-                      itemBuilder: (context, index) =>
-                          _ModeCard(index: index, onTap: () => _onModeTap(index)),
+            builder: (context, constraints) {
+              // 52% of the SafeArea-adjusted available height goes to the card
+              // carousel. Percentage-based so it adapts to any screen size without
+              // relying on a brittle fixed-content estimate.
+              final cardHeight = (constraints.maxHeight * 0.48).clamp(
+                220.0,
+                460.0,
+              );
+              return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).padding.bottom,
+                ),
+                child: Column(
+                  children: [
+                    const _HeaderBar(),
+                    const SizedBox(height: 28),
+                    _BrainLogoSection(
+                      cheatMode: _cheatMode,
+                      onCheatToggle: () =>
+                          setState(() => _cheatMode = !_cheatMode),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _DotIndicator(count: 3, current: _currentPage),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            );
-          },
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      height: cardHeight,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: 3,
+                        onPageChanged: (i) => setState(() => _currentPage = i),
+                        itemBuilder: (context, index) => _ModeCard(
+                          index: index,
+                          onTap: () => _onModeTap(index),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _DotIndicator(count: 3, current: _currentPage),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
-    ),
     );
   }
 }
@@ -107,8 +113,14 @@ class _HeaderBar extends StatelessWidget {
       builder: (context, authSnap) {
         final user = authSnap.data;
         if (user == null) {
-          return _buildBar(context,
-              coins: 0, xp: 0, level: 1, avatarId: null, googlePhotoUrl: null);
+          return _buildBar(
+            context,
+            coins: 0,
+            xp: 0,
+            level: 1,
+            avatarId: null,
+            googlePhotoUrl: null,
+          );
         }
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: UserService.userStream(user.uid),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/preferences_service.dart';
 import '../services/sound_service.dart';
@@ -42,15 +44,80 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature — Coming Soon'),
+  Future<void> _rateApp() async {
+    final uri = Uri.parse(
+        'https://play.google.com/store/apps/details?id=com.blaziq.blaziq');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _shareApp() async {
+    await Share.share(
+      'Check out Blaziq — a fast-paced trivia game where you race against the clock! 🧠⚡\n\nhttps://play.google.com/store/apps/details?id=com.blaziq.blaziq',
+    );
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardSurface,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Delete Account?',
+            style: AppTheme.subheading.copyWith(fontSize: 20),
+            textAlign: TextAlign.center),
+        content: Text(
+          'This will permanently delete your progress, coins, XP, and leaderboard ranking. '
+          'This cannot be undone.',
+          style: AppTheme.bodyMuted,
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx, false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.mutedText.withAlpha(80)),
+                    ),
+                    child: Text('Cancel',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.buttonLabel
+                            .copyWith(color: AppTheme.mutedText)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx, true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text('Delete',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.buttonLabel),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
+
+    if (confirmed != true || !mounted) return;
+    await AuthService.deleteAccount();
+    // onSignOut callback inside deleteAccount() navigates to WelcomeScreen.
   }
 
   void _confirmSignOut() {
@@ -198,6 +265,12 @@ class _MenuScreenState extends State<MenuScreen> {
                     label: 'Sign Out',
                     onTap: _confirmSignOut,
                   ),
+                  _ArrowRow(
+                    icon: Icons.delete_forever_rounded,
+                    label: 'Delete Account',
+                    onTap: _confirmDeleteAccount,
+                    destructive: true,
+                  ),
                   const SizedBox(height: 8),
                   _SectionHeader('SUPPORT & INFORMATION'),
                   _ArrowRow(
@@ -225,12 +298,12 @@ class _MenuScreenState extends State<MenuScreen> {
                   _ArrowRow(
                     icon: Icons.star_border_rounded,
                     label: 'Rate App',
-                    onTap: () => _showComingSoon('Rate App'),
+                    onTap: _rateApp,
                   ),
                   _ArrowRow(
                     icon: Icons.share_rounded,
                     label: 'Share App',
-                    onTap: () => _showComingSoon('Share App'),
+                    onTap: _shareApp,
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -298,12 +371,23 @@ class _ArrowRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool destructive;
 
-  const _ArrowRow(
-      {required this.icon, required this.label, required this.onTap});
+  const _ArrowRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.destructive = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    const red = Color(0xFFDC2626);
+    final iconColor = destructive ? red : AppTheme.mutedText;
+    final labelStyle = destructive
+        ? AppTheme.rowLabel.copyWith(color: red)
+        : AppTheme.rowLabel;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -315,11 +399,10 @@ class _ArrowRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppTheme.mutedText, size: 20),
+            Icon(icon, color: iconColor, size: 20),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: AppTheme.rowLabel)),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppTheme.mutedText, size: 22),
+            Expanded(child: Text(label, style: labelStyle)),
+            Icon(Icons.chevron_right_rounded, color: iconColor, size: 22),
           ],
         ),
       ),

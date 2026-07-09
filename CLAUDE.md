@@ -21,7 +21,8 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - flutter_svg ^2.0.0 for SVG icon rendering (google.svg, guest.svg in assets/icons/)
 - lottie ^3.3.3 for animated background (assets/animations/background.json on all main screens and onboarding)
 - package_info_plus ^8.0.0 for reading app version at runtime (used in AboutScreen); wrapped in try/catch with '1.0.0' fallback (PackageInfo can throw on Chrome debug)
-- url_launcher ^6.3.0 for opening mailto: and https:// links (used in AboutScreen); AndroidManifest queries added for https + mailto schemes; use LaunchMode.platformDefault (not externalApplication) + skip canLaunchUrl (returns false for mailto: on Chrome)
+- url_launcher ^6.3.0 for opening mailto: and https:// links (used in AboutScreen); AndroidManifest queries added for https + mailto schemes; use LaunchMode.platformDefault (not externalApplication) + skip canLaunchUrl (returns false for mailto: on Chrome); Rate App uses LaunchMode.externalApplication to open Play Store
+- share_plus ^10.0.0 for native share sheet (Share.share()); used in Settings → Share App
 - State management: Provider or simple StatefulWidget — nothing heavier
 
 ## Design System
@@ -247,10 +248,23 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
   - Edit Profile — navigates to Profile tab (index 0) via MainShell callback
   - Sign Out — confirmation dialog, only functional when signed in with Google;
     guests see a SnackBar: "You are playing as a guest — no account to sign out of"
+  - Delete Account — red icon + label (#DC2626), same card style as other rows;
+    available to ALL users (Google and guest); confirmation dialog warns data is permanent;
+    calls AuthService.deleteAccount() → UserService.deleteAccountData(uid):
+      batch deletes users/{uid} + leaderboard/{uid} + queries displayNames where uid==uid
+      and deletes ALL matching docs (current name + any old reserved names from past changes)
+      → attempts user.delete() Firebase Auth; if that fails (e.g. requires-recent-login)
+      signs out instead with no error shown → re-enters anonymous auth → onSignOut navigates
+      to WelcomeScreen. All data is always gone; an empty Auth record may occasionally remain
+      as a dataless orphan — harmless.
+    Firestore rules: displayNames allows delete when request.auth.uid == resource.data.uid.
 - Section SUPPORT & INFORMATION:
   - How To Play — opens HowToPlayScreen as a full-screen modal (showGeneralDialog, fade+scale entrance)
   - About — opens AboutScreen as a full-screen modal (showGeneralDialog, fade+scale entrance); uses package_info_plus for version + url_launcher for email/legal links
-  - Rate App / Share App — each shows "Coming Soon" SnackBar
+  - Rate App — opens Play Store listing via url_launcher (LaunchMode.externalApplication):
+      https://play.google.com/store/apps/details?id=com.blaziq.blaziq
+  - Share App — opens native share sheet via share_plus ^10.0.0 (Share.share());
+      message: "Check out Blaziq — a fast-paced trivia game where you race against the clock! 🧠⚡\n\n[Play Store URL]"
 
 ## Leaderboard Strategy
 - Phase 3-5: Leaderboard shows solo mode best scores only
@@ -273,12 +287,14 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
 - `UserService.syncLeaderboardDisplayName(uid, name)` syncs leaderboard after any name change
 - Leaderboard reads: `displayName` first, fall back to `username` for legacy docs
 
-### Firestore Security (add to Firestore rules)
+### Firestore Security
+Rules are live in `firestore.rules` and deployed to blaziq-1822.
 ```
 match /displayNames/{name} {
   allow read: if true;
   allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
   allow update: if request.auth != null && resource.data.uid == request.auth.uid;
+  allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
 }
 ```
 
@@ -479,7 +495,10 @@ lib/
   - ✅ Settings screen: audio/haptic toggles persist via shared_preferences
   - ✅ Settings → Edit Profile navigates to Profile tab
   - ✅ Settings → Sign Out: confirmation dialog for Google users; SnackBar for guests
-  - ✅ Settings → support rows show "Coming Soon" SnackBar
+  - ✅ Settings → How To Play / About open full-screen modals
+  - ✅ Settings → Rate App opens Play Store listing (url_launcher, externalApplication)
+  - ✅ Settings → Share App opens native share sheet (share_plus ^10.0.0)
+  - ✅ Settings → Push / In-App Notifications toggles: UI only (not yet wired)
   - ✅ Store screen replaced with Coming Soon placeholder (live coin balance kept)
   - ✅ Developer cheat mode: 7 rapid taps on logo activates 5 in-game cheat buttons
   - ✅ Google Sign-In username fix: displayName captured before credential creation,

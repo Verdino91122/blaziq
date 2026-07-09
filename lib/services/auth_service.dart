@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, VoidCallback;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, VoidCallback;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'user_service.dart';
 
@@ -215,6 +215,37 @@ class AuthService {
   static Future<void> signOut() async {
     if (!kIsWeb) await GoogleSignIn().signOut();
     await _auth.signOut();
+    await ensureAnonymousSignIn();
+    onSignOut?.call();
+  }
+
+  /// Permanently deletes the current user's account:
+  ///   1. Wipes all Firestore data (user doc, leaderboard, display-name claim).
+  ///   2. Attempts to delete the Firebase Auth account. If Firebase rejects the
+  ///      call (e.g. requires-recent-login), we sign out instead — the Auth
+  ///      record becomes an orphaned, dataless shell with no user impact.
+  ///   3. Re-enters anonymous auth so the app always has a signed-in user.
+  static Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final uid = user.uid;
+
+    // Firestore data is always deleted first — this succeeds regardless of
+    // how long ago the user signed in.
+    await UserService.deleteAccountData(uid);
+
+    // Attempt to remove the Firebase Auth account. On failure (most commonly
+    // requires-recent-login) we simply sign out; the empty Auth record is
+    // harmless because all data is already gone.
+    try {
+      if (!kIsWeb) await GoogleSignIn().signOut();
+      await user.delete();
+    } catch (e) {
+      debugPrint('[Blaziq] deleteAccount: Auth delete failed ($e), signing out instead');
+      await _auth.signOut().catchError((_) {});
+    }
+
     await ensureAnonymousSignIn();
     onSignOut?.call();
   }

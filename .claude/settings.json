@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Remove-Item \"C:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\build\" -Recurse -Force -Confirm:$false)"
+      "PowerShell(Remove-Item \"C:\\\\Users\\\\user\\\\Documents\\\\Blaziq\\\\build\" -Recurse -Force -Confirm:$false)",
+      "mcp__plugin_firebase_firebase__firebase_deploy",
+      "mcp__plugin_firebase_firebase__firebase_deploy_status"
     ]
   }
 }

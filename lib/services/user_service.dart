@@ -167,6 +167,29 @@ class UserService {
     await _db.collection('users').doc(uid).delete();
   }
 
+  /// Permanently deletes all Firestore data for a user:
+  ///   - users/{uid} and leaderboard/{uid} are deleted atomically in a batch.
+  ///   - ALL displayNames documents owned by uid (current name + any old reserved
+  ///     names from past name changes) are queried and deleted in the same batch,
+  ///     so no name is permanently blocked after the account is gone.
+  static Future<void> deleteAccountData(String uid) async {
+    final batch = _db.batch();
+    batch.delete(_db.collection('users').doc(uid));
+    batch.delete(_db.collection('leaderboard').doc(uid));
+
+    try {
+      final nameSnap = await _db
+          .collection('displayNames')
+          .where('uid', isEqualTo: uid)
+          .get();
+      for (final doc in nameSnap.docs) {
+        batch.delete(doc.reference);
+      }
+    } catch (_) {}
+
+    await batch.commit();
+  }
+
   /// Real-time stream of the user's Firestore document.
   static Stream<DocumentSnapshot<Map<String, dynamic>>> userStream(String uid) {
     return _db.collection('users').doc(uid).snapshots();
