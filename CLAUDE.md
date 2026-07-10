@@ -10,8 +10,10 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - Flutter (Dart)
 - Firebase Auth (Anonymous on first launch + Google Sign-In for account linking)
 - Firebase Firestore (database + leaderboard + user profiles)
-- Open Trivia DB API (https://opentdb.com/api.php) for questions
-- http package for API calls (handles both mobile and web)
+- Questions: Firestore (questions/{categoryId}/items) via QuestionService —
+  pre-generated AI trivia; local JSON assets in assets/data/ kept as offline
+  fallback only (Open Trivia DB API no longer used)
+- http package for API calls (country detection; handles both mobile and web)
 - google_fonts ^8.0.0 for Fira Sans (w400–w800; all screens)
 - auto_size_text ^3.0.0 for question card and answer buttons in solo game
 - flutter_native_splash ^2.4.1 for native splash screen (runtime dep)
@@ -121,6 +123,10 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
 - Grid texture overlay on mode cards: subtle deepGrey lines
 
 ### Solo Mode Game Screen (not in nav bar)
+- Entry: tapping the Solo card opens a category picker bottom sheet
+  (categories live from Firestore via QuestionService.getCategories(),
+  HOT 🔥 badge on isHot categories); picking one launches
+  SoloGameScreen(categoryId: ...)
 - Background: cloudWhite full screen
 - Top bar: white background, X quit button left, difficulty pill center
   (small colored dot + difficulty label in ink, softGrey pill bg), score right
@@ -144,7 +150,9 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
   - Streak 4: +8s
   - Streak 5+: +10s
 - Wrong answer: -3s, streak resets to 0 (next correct is back to +4s)
-- Difficulty escalation: Easy → Medium (5 correct) → Hard (10 correct)
+- Difficulty progression: sessions come pre-ordered easy → medium → hard from
+  QuestionService; the difficulty pill follows the current question's own
+  difficulty field (correct-count escalation removed with the Firestore switch)
 - Floating feedback: '+4s'/'+6s'/'+8s'/'+10s' in electricBlue, '-3s' in blazeOrange.
   Text flies upward with scale pop + fade, then timer bumps (scale + color flash).
 - Streak indicator: softOrange pill, blazeOrange text "🔥 x3", Fira Sans 15sp w700.
@@ -168,10 +176,13 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
 - Results screen: headline based on performance, final score, correct count,
   highest streak, accuracy %, score/coins/XP earned with count-up animations,
   XP progress bar, LEVEL UP! badge if threshold crossed
-- API: fetches 50 questions per batch; auto-prefetch when <3 remain; auto-retry once
-  after 5s on HTTP 429
-- Use kIsWeb with corsproxy.io prefix for web builds
-- Always decode HTML entities in questions and answers
+- Questions: QuestionService.getSessionQuestions(categoryId) fetches 15-question
+  sessions from Firestore (7 easy + 5 medium + 3 hard, shuffled within each
+  difficulty group); auto-prefetch of the next session when <3 remain, excluding
+  on-screen question IDs to avoid duplicates
+- Each question is marked seen (QuestionService.markSeen) when answered, or at
+  game over if the timer runs out with an unanswered question on screen
+- HTML entities decoded centrally inside QuestionService
 
 #### Sound effects (SoundService)
 - Background music starts when countdown ends, loops at volume 0.4
@@ -384,9 +395,56 @@ A live quiz mode where one user hosts a session and multiple players
 join via a room code and answer simultaneously in real time.
 This is the most complex feature — build after friend and online modes are complete.
 
+## Question Architecture (Firestore — replaces Open Trivia DB + primary JSON)
+
+### Firestore collections
+Collection: categories
+  Document: {categoryId}   (science, geography, history, general_knowledge,
+                            sports, entertainment, technology, nature_animals, world_cup)
+    - name: string · emoji: string · isHot: bool · totalQuestions: number · enabled: bool
+
+Collection: questions
+  Document: {categoryId}
+    Subcollection: items
+      Document: {questionId}  (e.g. science_easy_0001)
+        - question: string · correct_answer: string · incorrect_answers: string[]
+        - difficulty: 'easy' | 'medium' | 'hard' · category: string
+
+Rules (deployed): questions/{categoryId}/items and categories allow read if
+request.auth != null; writes denied (content is seeded out-of-band).
+
+### QuestionService (lib/services/question_service.dart)
+- getSessionQuestions(categoryId, {excludeIds}) — one game session:
+  7 easy + 5 medium + 3 hard (15 total), shuffled within each difficulty group,
+  returned easy → medium → hard. Excludes locally-seen question IDs; if a
+  difficulty runs out of unseen questions it tops up with seen ones so the game
+  never fails to start. Firestore fetch window per difficulty grows with the
+  seen list (count×4 + seen) so unseen questions stay reachable cheaply.
+- Fallback: if Firestore fails entirely, loads assets/data/questions_{cat}.json
+  (only the original 4 categories ship as assets — last-resort offline only)
+- Seen tracking (shared_preferences): seen_{categoryId} = list of question IDs;
+  seen_reset_date = epoch millis — all seen lists auto-clear after 60 days
+- markSeen(categoryId, id) / markSeenAll(categoryId, ids) — called by game screens
+- getCategories() — categories where enabled == true, isHot first then alphabetical
+- HTML entities are decoded inside QuestionService (models arrive clean)
+
+### How the game modes use it
+- Solo: category picker sheet on Home → SoloGameScreen(categoryId);
+  session fetch + prefetch; markSeen after each answered question
+- Friend: HOST (and lobby category change / rematch) fetches the session on the
+  host's device and stores the full 15-question list in the room document
+  ('questions' array + totalQuestions) so both players play identical questions;
+  nextQuestion()/sudden death read from that stored list — no per-question fetch.
+  When room.status == 'finished' (any path: normal end, quit, disconnect), each
+  device calls markSeenAll with the shown IDs read from the room doc
+- HOT badge: widgets/hot_badge.dart — SVG flame (assets/icons/hot_now_badge.svg,
+  "HOT NOW"), overlaid ON the top-right corner of category cards/chips where
+  isHot == true: parent Stack uses clipBehavior: Clip.none + negative Positioned
+  offsets; GridViews carry internal top/right padding so the viewport doesn't
+  clip the overflow
+
 ## Web Builds (Chrome testing)
 - Use kIsWeb from flutter/foundation.dart to detect web platform
-- Prefix Open Trivia DB API URL with https://corsproxy.io/? on web
 - All features should work on both web and mobile
 
 ## Rules for Claude Code (IMPORTANT)
@@ -397,7 +455,8 @@ This is the most complex feature — build after friend and online modes are com
 - Always ask before adding any new pub.dev package
 - Never add payment or billing code unless explicitly asked
 - Always handle loading states and errors gracefully
-- Always decode HTML entities from Open Trivia DB API responses
+- Questions come from QuestionService (Firestore) — never re-add Open Trivia DB;
+  HTML entity decoding lives inside QuestionService
 - Never hardcode user data — always check auth state first
 - Always use AppTheme for colors and text styles — never hardcode colors
 - Dispose all AnimationControllers and Timers in dispose()
@@ -445,8 +504,13 @@ lib/
     ├── auth_service.dart         ← anonymous sign-in, Google Sign-In, account linking
     ├── user_service.dart         ← Firestore CRUD, level/XP math, country detection
     ├── display_name_service.dart ← displayName claim/release/availability/cooldown
+    ├── question_service.dart     ← Firestore question/category fetching, seen tracking,
+    │                                local JSON fallback (see Question Architecture)
+    ├── room_service.dart         ← friend mode room lifecycle + game logic
     ├── sound_service.dart        ← audioplayers wrapper; SFX + background music
     └── preferences_service.dart  ← shared_preferences wrapper; sounds/music/haptics
+
+widgets/ also includes hot_badge.dart (HOT 🔥 pill for isHot categories)
 
 ## Project Status
 
@@ -572,7 +636,9 @@ lib/
     - quitUid: uid | null  (set when a player confirms quit mid-game; cleared on resetForRematch)
     - hostGamesWon / guestGamesWon: number (cumulative session wins)
     - hostTotalScore / guestTotalScore: number (cumulative session scores)
-    - totalQuestions: 20 (default)
+    - questions: array of 15 question maps (full session, fetched by host via
+      QuestionService and stored so both players play identical questions)
+    - totalQuestions: 15 (length of the stored session list)
     - createdAt: timestamp
 
 ### Friend Mode scoring (Phase 6)
@@ -592,7 +658,8 @@ lib/
   - Buzzer shake animation: ±3px rapid left-right shake while waiting for press; stops on press
   - Buzzer countdown: once winner presses, countdown in tenths of second shown inside buzzer
     circle (electricBlue, 28sp bold); loser sees grey lock icon + "Too slow!" label below
-  - Host badge: blazeOrange pill at top-right corner of player card in lobby (not on avatar)
+  - Host badge: SVG pill (assets/icons/host_badge.svg, width 56) overlaid ON the
+    top-right corner of the host player card in lobby (Clip.none + Positioned -10/-10)
   - Nickname picker: anonymous users without a valid username see a dialog before accessing
     friend mode; username saved to Firestore users/{uid}.username
   - Quitter flow: confirming quit calls quitGame() then shows _QuitResultsScreen with

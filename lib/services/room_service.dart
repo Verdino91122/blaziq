@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
+
+import 'question_service.dart';
 
 // ── Question model ─────────────────────────────────────────────────────────────
 
@@ -22,15 +22,15 @@ class FriendQuestion {
     required this.shuffledAnswers,
   });
 
-  factory FriendQuestion.fromAssetJson(Map<String, dynamic> json) {
-    final correct = json['correct_answer'] as String;
-    final incorrect = List<String>.from(json['incorrect_answers'] as List);
-    final all = [correct, ...incorrect]..shuffle();
+  /// Converts a QuestionService question, shuffling the answer order once so
+  /// both players see the same layout.
+  factory FriendQuestion.fromTrivia(TriviaQuestion q) {
+    final all = [q.correctAnswer, ...q.incorrectAnswers]..shuffle();
     return FriendQuestion(
-      id: json['id'] as String,
-      difficulty: json['difficulty'] as String,
-      question: json['question'] as String,
-      correctAnswer: correct,
+      id: q.id,
+      difficulty: q.difficulty,
+      question: q.question,
+      correctAnswer: q.correctAnswer,
       shuffledAnswers: all,
     );
   }
@@ -79,6 +79,7 @@ class RoomData {
   final String status; // waiting | lobby | countdown | playing | finished
   final int currentQuestionIndex;
   final FriendQuestion? currentQuestion;
+  final List<FriendQuestion> questions; // full session list (host-fetched)
   final String phase; // buzzer | answering | inherited | transition | sudden_death | finished
   final String? buzzerWinner;
   final String? buzzerWrongAnswer;
@@ -118,6 +119,7 @@ class RoomData {
     required this.status,
     required this.currentQuestionIndex,
     this.currentQuestion,
+    this.questions = const [],
     required this.phase,
     this.buzzerWinner,
     this.buzzerWrongAnswer,
@@ -156,6 +158,10 @@ class RoomData {
       status: d['status'] as String? ?? 'waiting',
       currentQuestionIndex: (d['currentQuestionIndex'] as num?)?.toInt() ?? 0,
       currentQuestion: qMap != null ? FriendQuestion.fromFirestore(qMap) : null,
+      questions: ((d['questions'] as List?) ?? [])
+          .map((e) =>
+              FriendQuestion.fromFirestore(Map<String, dynamic>.from(e as Map)))
+          .toList(),
       phase: d['phase'] as String? ?? 'buzzer',
       buzzerWinner: d['buzzerWinner'] as String?,
       buzzerWrongAnswer: d['buzzerWrongAnswer'] as String?,
@@ -190,23 +196,20 @@ class RoomService {
     return 'BLAZIQ-$digits';
   }
 
-  /// Loads questions from the bundled JSON asset.
-  /// Returns questions sorted: easy first, then medium, then hard.
-  static Future<List<FriendQuestion>> loadQuestionsForCategory(
+  /// Fetches one session of questions (easy → medium → hard) from Firestore
+  /// via QuestionService (with local JSON fallback), ready to store in the
+  /// room document so both players play the exact same questions.
+  static Future<List<FriendQuestion>> _fetchSessionQuestions(
       String category) async {
-    final raw = await rootBundle
-        .loadString('assets/data/questions_$category.json');
-    final json = jsonDecode(raw) as Map<String, dynamic>;
-    final questions = (json['questions'] as List)
-        .map((e) => FriendQuestion.fromAssetJson(e as Map<String, dynamic>))
+    final session = await QuestionService.getSessionQuestions(category);
+    return session.map(FriendQuestion.fromTrivia).toList();
+  }
+
+  /// Reads the session question list stored in a room document.
+  static List<Map<String, dynamic>> _storedQuestions(Map<String, dynamic> d) {
+    return ((d['questions'] as List?) ?? [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
-    final easy = questions.where((q) => q.difficulty == 'easy').toList()
-      ..shuffle();
-    final medium = questions.where((q) => q.difficulty == 'medium').toList()
-      ..shuffle();
-    final hard = questions.where((q) => q.difficulty == 'hard').toList()
-      ..shuffle();
-    return [...easy, ...medium, ...hard];
   }
 
   // All valid avatar group numbers (Group 45 is missing from the asset set).
@@ -253,7 +256,7 @@ class RoomService {
     required String category,
   }) async {
     final roomId = _generateRoomId();
-    final questions = await loadQuestionsForCategory(category);
+    final questions = await _fetchSessionQuestions(category);
     final firstQ = questions.first;
 
     await _db.collection('rooms').doc(roomId).set({
@@ -277,6 +280,8 @@ class RoomService {
       'status': 'waiting',
       'currentQuestionIndex': 0,
       'currentQuestion': firstQ.toMap(),
+      'questions': questions.map((q) => q.toMap()).toList(),
+      'totalQuestions': questions.length,
       'phase': 'buzzer',
       'buzzerWinner': null,
       'buzzerWrongAnswer': null,
@@ -356,10 +361,12 @@ class RoomService {
 
   /// Updates the category (host only, while in lobby).
   static Future<void> updateCategory(String roomId, String category) async {
-    final questions = await loadQuestionsForCategory(category);
+    final questions = await _fetchSessionQuestions(category);
     await _db.collection('rooms').doc(roomId).update({
       'category': category,
       'currentQuestion': questions.first.toMap(),
+      'questions': questions.map((q) => q.toMap()).toList(),
+      'totalQuestions': questions.length,
       'currentQuestionIndex': 0,
       'hostReady': false,
       'guestReady': false,
@@ -477,17 +484,16 @@ class RoomService {
     });
   }
 
-  /// Advances to the next question. Call after the 'transition' overlay ends.
-  /// Pre-loads the question before writing — no async inside Firestore tx.
+  /// Advances to the next question, reading from the session question list
+  /// stored in the room document so both players see the same questions.
   static Future<void> nextQuestion(String roomId) async {
     final snap = await _db.collection('rooms').doc(roomId).get();
     if (!snap.exists) return;
     final d = snap.data()!;
     final idx = (d['currentQuestionIndex'] as num?)?.toInt() ?? 0;
-    final category = d['category'] as String? ?? 'science';
     final total = (d['totalQuestions'] as num?)?.toInt() ?? 20;
 
-    final questions = await loadQuestionsForCategory(category);
+    final questions = _storedQuestions(d);
     final nextIdx = idx + 1;
 
     if (nextIdx >= questions.length || nextIdx >= total) {
@@ -498,7 +504,7 @@ class RoomService {
     final nextQ = questions[nextIdx];
     await _db.collection('rooms').doc(roomId).update({
       'currentQuestionIndex': nextIdx,
-      'currentQuestion': nextQ.toMap(),
+      'currentQuestion': nextQ,
       'phase': 'buzzer',
       'buzzerWinner': null,
       'buzzerWrongAnswer': null,
@@ -515,14 +521,23 @@ class RoomService {
     final guestScore = (d['guestScore'] as num?)?.toInt() ?? 0;
 
     if (hostScore == guestScore) {
-      // Tie → sudden death
-      final category = d['category'] as String? ?? 'science';
-      final questions = await loadQuestionsForCategory(category);
-      // Pick a random question for sudden death
-      final sdQ = questions[_rng.nextInt(questions.length)];
+      // Tie → sudden death. Prefer an unshown question from the stored
+      // session list; fall back to any stored question, then a fresh fetch.
+      final stored = _storedQuestions(d);
+      Map<String, dynamic> sdQ;
+      if (stored.isNotEmpty) {
+        final idx = (d['currentQuestionIndex'] as num?)?.toInt() ?? 0;
+        final unshown =
+            idx + 1 < stored.length ? stored.sublist(idx + 1) : stored;
+        sdQ = unshown[_rng.nextInt(unshown.length)];
+      } else {
+        final category = d['category'] as String? ?? 'science';
+        final questions = await _fetchSessionQuestions(category);
+        sdQ = questions[_rng.nextInt(questions.length)].toMap();
+      }
       await _db.collection('rooms').doc(roomId).update({
         'phase': 'sudden_death',
-        'currentQuestion': sdQ.toMap(),
+        'currentQuestion': sdQ,
         'buzzerWinner': null,
         'buzzerWrongAnswer': null,
       });
@@ -594,7 +609,7 @@ class RoomService {
       if (!snap.exists) return;
       final d = snap.data()!;
       final category = d['category'] as String? ?? 'science';
-      final questions = await loadQuestionsForCategory(category);
+      final questions = await _fetchSessionQuestions(category);
       await ref.update({
         'status': 'lobby',
         'phase': 'buzzer',
@@ -606,6 +621,8 @@ class RoomService {
         'guestReady': false,
         'currentQuestionIndex': 0,
         'currentQuestion': questions.first.toMap(),
+        'questions': questions.map((q) => q.toMap()).toList(),
+        'totalQuestions': questions.length,
         'buzzerWinner': null,
         'buzzerWrongAnswer': null,
         'winnerId': null,

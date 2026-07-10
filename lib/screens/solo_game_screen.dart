@@ -1,78 +1,41 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
 import '../services/preferences_service.dart';
+import '../services/question_service.dart';
 import '../services/sound_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 
-// ── HTML entity decoder ──────────────────────────────────────────────────────
-
-String _decodeHtml(String text) {
-  var s = text
-      .replaceAll('&amp;', '&')
-      .replaceAll('&quot;', '"')
-      .replaceAll('&apos;', "'")
-      .replaceAll('&#039;', "'")
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&ldquo;', '“')
-      .replaceAll('&rdquo;', '”')
-      .replaceAll('&lsquo;', '‘')
-      .replaceAll('&rsquo;', '’')
-      .replaceAll('&ndash;', '–')
-      .replaceAll('&mdash;', '—')
-      .replaceAll('&nbsp;', ' ')
-      .replaceAll('&eacute;', 'é')
-      .replaceAll('&egrave;', 'è')
-      .replaceAll('&ecirc;', 'ê')
-      .replaceAll('&ntilde;', 'ñ')
-      .replaceAll('&uuml;', 'ü')
-      .replaceAll('&ouml;', 'ö')
-      .replaceAll('&auml;', 'ä')
-      .replaceAll('&oacute;', 'ó')
-      .replaceAll('&iacute;', 'í')
-      .replaceAll('&aacute;', 'á')
-      .replaceAll('&uacute;', 'ú')
-      .replaceAll('&ccedil;', 'ç')
-      .replaceAll('&szlig;', 'ß');
-  s = s.replaceAllMapped(
-    RegExp(r'&#(\d+);'),
-    (m) => String.fromCharCode(int.parse(m.group(1)!)),
-  );
-  s = s.replaceAllMapped(
-    RegExp(r'&#x([0-9a-fA-F]+);'),
-    (m) => String.fromCharCode(int.parse(m.group(1)!, radix: 16)),
-  );
-  return s;
-}
-
 // ── Data model ───────────────────────────────────────────────────────────────
 
 class _Question {
+  final String id;
+  final String difficulty;
   final String text;
   final List<String> answers;
   final String correct;
 
   const _Question({
+    required this.id,
+    required this.difficulty,
     required this.text,
     required this.answers,
     required this.correct,
   });
 
-  factory _Question.fromJson(Map<String, dynamic> json) {
-    final correct = _decodeHtml(json['correct_answer'] as String);
-    final answers = [
-      correct,
-      ...(json['incorrect_answers'] as List).map((a) => _decodeHtml(a as String)),
-    ]..shuffle(Random());
-    return _Question(text: _decodeHtml(json['question'] as String), answers: answers, correct: correct);
+  factory _Question.fromTrivia(TriviaQuestion q) {
+    final answers = [q.correctAnswer, ...q.incorrectAnswers]..shuffle(Random());
+    return _Question(
+      id: q.id,
+      difficulty: q.difficulty,
+      text: q.question,
+      answers: answers,
+      correct: q.correctAnswer,
+    );
   }
 }
 
@@ -105,8 +68,13 @@ class _CheatCallbacks {
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 class SoloGameScreen extends StatefulWidget {
+  final String categoryId;
   final bool cheatMode;
-  const SoloGameScreen({super.key, this.cheatMode = false});
+  const SoloGameScreen({
+    super.key,
+    required this.categoryId,
+    this.cheatMode = false,
+  });
 
   @override
   State<SoloGameScreen> createState() => _SoloGameScreenState();
@@ -164,26 +132,22 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   late final AnimationController _streakBounceCtrl;
   late final Animation<double> _streakBounceAnim;
 
-  // ── API ───────────────────────────────────────────────────────────────────
+  // ── Question fetching (Firestore via QuestionService) ────────────────────
 
-  static const _apiBase = 'https://opentdb.com/api.php?amount=50&type=multiple';
-
-  Future<List<_Question>> _fetchBatch(_Difficulty difficulty) async {
-    final baseUrl = '$_apiBase&difficulty=${difficulty.name}';
-    final url = kIsWeb ? 'https://corsproxy.io/?$baseUrl' : baseUrl;
-    var response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-    if (response.statusCode == 429) {
-      await Future.delayed(const Duration(seconds: 5));
-      response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-    }
-    if (response.statusCode != 200) throw Exception('Server error (${response.statusCode})');
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final code = json['response_code'] as int;
-    if (code == 5) throw Exception('Too many requests — please wait a moment.');
-    if (code != 0) throw Exception('Could not load questions (code $code).');
-    return (json['results'] as List)
-        .map((q) => _Question.fromJson(q as Map<String, dynamic>))
-        .toList();
+  /// Fetches one session (7 easy + 5 medium + 3 hard) from Firestore.
+  /// Questions currently on screen are excluded so a prefetched session
+  /// never repeats an unanswered question from the active one.
+  Future<List<_Question>> _fetchSession() async {
+    final exclude = {
+      ..._questions.map((q) => q.id),
+      ..._nextBatch.map((q) => q.id),
+    };
+    final session = await QuestionService.getSessionQuestions(
+      widget.categoryId,
+      excludeIds: exclude,
+    );
+    if (session.isEmpty) throw Exception('No questions available.');
+    return session.map(_Question.fromTrivia).toList();
   }
 
   // ── Game flow ─────────────────────────────────────────────────────────────
@@ -284,10 +248,11 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     }
 
     try {
-      final questions = await _fetchBatch(_Difficulty.easy);
+      final questions = await _fetchSession();
       if (!mounted) return;
       setState(() {
         _questions = questions;
+        _difficulty = _difficultyOf(questions.first);
         _phase = _GamePhase.playing;
         _countingDown = true;
         _countdownValue = 3;
@@ -347,6 +312,11 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     _countdownTimer?.cancel();
     _feedbackTimer?.cancel();
     _streakBounceCtrl.stop();
+
+    // Timer can run out with an unanswered question on screen — mark it too.
+    if (!_answered && _qIndex < _questions.length) {
+      QuestionService.markSeen(widget.categoryId, _questions[_qIndex].id);
+    }
     SoundService.stopTicToc();
     SoundService.stopBackgroundMusic();
     SoundService.playGameOver();
@@ -384,6 +354,9 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   void _onAnswer(String answer) {
     if (_answered || _phase != _GamePhase.playing) return;
     _countdownTimer?.cancel();
+
+    // Never show this question again on this device (fire-and-forget).
+    QuestionService.markSeen(widget.categoryId, _questions[_qIndex].id);
 
     final isCorrect = answer == _questions[_qIndex].correct;
     int newTime = _timeRemaining;
@@ -457,21 +430,16 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     });
   }
 
+  /// Difficulty pill follows the current question (sessions come pre-ordered
+  /// easy → medium → hard from QuestionService).
+  static _Difficulty _difficultyOf(_Question q) => switch (q.difficulty) {
+    'hard' => _Difficulty.hard,
+    'medium' => _Difficulty.medium,
+    _ => _Difficulty.easy,
+  };
+
   Future<void> _advanceQuestion() async {
     if (!mounted) return;
-
-    _Difficulty newDiff = _difficulty;
-    if (_correctCount >= 10) {
-      newDiff = _Difficulty.hard;
-    } else if (_correctCount >= 5) {
-      newDiff = _Difficulty.medium;
-    }
-
-    if (newDiff != _difficulty) {
-      _difficulty = newDiff;
-      _nextBatch = [];
-      _prefetching = false;
-    }
 
     _qIndex++;
 
@@ -482,6 +450,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
           _nextBatch = [];
           _qIndex = 0;
           _prefetching = false;
+          _difficulty = _difficultyOf(_questions[0]);
           _selectedAnswer = null;
           _answered = false;
         });
@@ -494,11 +463,12 @@ class _SoloGameScreenState extends State<SoloGameScreen>
           _answered = false;
         });
         try {
-          final batch = await _fetchBatch(_difficulty);
+          final batch = await _fetchSession();
           if (!mounted) return;
           setState(() {
             _questions = batch;
             _qIndex = 0;
+            _difficulty = _difficultyOf(batch[0]);
             _loadingNextBatch = false;
           });
           _startCountdown();
@@ -514,6 +484,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       }
     } else {
       setState(() {
+        _difficulty = _difficultyOf(_questions[_qIndex]);
         _selectedAnswer = null;
         _answered = false;
       });
@@ -563,7 +534,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     if (_prefetching || _nextBatch.isNotEmpty) return;
     if (_questions.length - _qIndex > 3) return;
     _prefetching = true;
-    _fetchBatch(_difficulty)
+    _fetchSession()
         .then((batch) {
           if (!mounted) return;
           setState(() {

@@ -4,6 +4,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../services/question_service.dart';
 import '../services/room_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/user_avatar.dart';
@@ -53,6 +54,7 @@ class _FriendGameScreenState extends State<FriendGameScreen>
   bool _gameStarted = false;
   bool _gameEnded = false;
   bool _navigating = false;
+  bool _markedQuestionsSeen = false;
   String? _myAnswer;
   bool _answered = false;
   String? _lastQuestionId;
@@ -635,6 +637,23 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     });
   }
 
+  /// Marks every question shown this game as seen on this device. Runs on
+  /// both host and guest — the guest gets the IDs from the room document's
+  /// stored question list.
+  void _markShownQuestionsSeen(RoomData room) {
+    if (_markedQuestionsSeen) return;
+    _markedQuestionsSeen = true;
+    final shownIds = <String>{
+      for (var i = 0;
+          i <= room.currentQuestionIndex && i < room.questions.length;
+          i++)
+        room.questions[i].id,
+      // Covers the sudden-death question, which is outside the normal order.
+      if (room.currentQuestion != null) room.currentQuestion!.id,
+    };
+    QuestionService.markSeenAll(room.category, shownIds.toList());
+  }
+
   void _navigateToResults(RoomData room) {
     if (_navigating || _showQuitOverlay) return;
     _navigating = true;
@@ -786,6 +805,10 @@ class _FriendGameScreenState extends State<FriendGameScreen>
               if (mounted) _handleOpponentQuit(room);
             });
           }
+
+          // Game over (any path: normal end, quit, disconnect) — record the
+          // shown questions as seen on this device.
+          if (room.status == 'finished') _markShownQuestionsSeen(room);
 
           // Navigate to results when finished (only if not showing quit overlay)
           if (room.status == 'finished' && !_navigating && !_quitOverlayTriggered) {

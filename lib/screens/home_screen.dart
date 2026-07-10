@@ -3,9 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/question_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/hot_badge.dart';
 import '../widgets/user_avatar.dart';
 import 'friend_mode_screen.dart';
 import 'solo_game_screen.dart';
@@ -30,12 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onModeTap(int index) {
     if (index == 0) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SoloGameScreen(cheatMode: _cheatMode),
-        ),
-      );
+      _showSoloCategoryPicker();
     } else if (index == 1) {
       Navigator.push(
         context,
@@ -43,6 +40,31 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     // Online card (index 2) not yet available — ribbon makes it clear
+  }
+
+  void _showSoloCategoryPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => _SoloCategorySheet(
+        onSelected: (category) {
+          Navigator.pop(sheetContext);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SoloGameScreen(
+                categoryId: category.id,
+                cheatMode: _cheatMode,
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -488,6 +510,182 @@ class _GridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GridPainter old) => false;
+}
+
+// ── Solo category picker sheet ────────────────────────────────────────────────
+
+class _SoloCategorySheet extends StatefulWidget {
+  final ValueChanged<QuizCategory> onSelected;
+
+  const _SoloCategorySheet({required this.onSelected});
+
+  @override
+  State<_SoloCategorySheet> createState() => _SoloCategorySheetState();
+}
+
+class _SoloCategorySheetState extends State<_SoloCategorySheet> {
+  late Future<List<QuizCategory>> _categoriesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _categoriesFuture = QuestionService.getCategories();
+  }
+
+  void _retry() {
+    setState(() => _categoriesFuture = QuestionService.getCategories());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = MediaQuery.of(context).size.height * 0.65;
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        // Right padding lives partly inside the GridView so corner badges
+        // (top: -14 / right: -8) aren't clipped by the scroll viewport.
+        padding: const EdgeInsets.fromLTRB(20, 20, 12, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'SELECT CATEGORY',
+              textAlign: TextAlign.center,
+              style: AppTheme.appBarTitle,
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: FutureBuilder<List<QuizCategory>>(
+                future: _categoriesFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.electricBlue,
+                          strokeWidth: 3,
+                        ),
+                      ),
+                    );
+                  }
+                  if (snap.hasError || (snap.data?.isEmpty ?? true)) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.wifi_off_rounded,
+                            color: AppTheme.steel,
+                            size: 40,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Could not load categories',
+                            style: AppTheme.bodyMuted,
+                          ),
+                          const SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: _retry,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.electricBlue,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'TRY AGAIN',
+                                style: AppTheme.buttonLabel,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  final categories = snap.data!;
+                  return GridView.count(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(
+                      top: 14,
+                      right: 8,
+                      bottom: 4,
+                    ),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.6,
+                    children: [
+                      for (final category in categories)
+                        _SoloCategoryCard(
+                          category: category,
+                          onTap: () => widget.onSelected(category),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SoloCategoryCard extends StatelessWidget {
+  final QuizCategory category;
+  final VoidCallback onTap;
+
+  const _SoloCategoryCard({required this.category, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.softGrey,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.deepGrey),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(category.emoji, style: const TextStyle(fontSize: 30)),
+                    const SizedBox(height: 8),
+                    Text(
+                      category.name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.rowLabel.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (category.isHot)
+              const Positioned(top: -14, right: -8, child: HotBadge()),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _DotIndicator extends StatelessWidget {

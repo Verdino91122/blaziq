@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
+import '../services/question_service.dart';
 import '../services/room_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/hot_badge.dart';
 import '../widgets/user_avatar.dart';
 import 'friend_game_screen.dart';
 
@@ -36,6 +39,16 @@ class _LobbyScreenState extends State<LobbyScreen>
   String _pendingCategory = 'science';
   bool _myReady = false;
 
+  // Categories from Firestore; falls back to the 4 bundled ones if the
+  // fetch fails (those are the only ones with local JSON assets anyway).
+  static const _fallbackCategories = [
+    QuizCategory(id: 'science', name: 'Science', emoji: '🔬', isHot: false, totalQuestions: 0),
+    QuizCategory(id: 'geography', name: 'Geography', emoji: '🌍', isHot: false, totalQuestions: 0),
+    QuizCategory(id: 'history', name: 'History', emoji: '📜', isHot: false, totalQuestions: 0),
+    QuizCategory(id: 'general_knowledge', name: 'General Knowledge', emoji: '🧠', isHot: false, totalQuestions: 0),
+  ];
+  List<QuizCategory> _categories = _fallbackCategories;
+
   // Role tracking: starts from widget.isHost; updates when the current user
   // gets promoted from guest to host after the original host leaves the lobby.
   bool _amHost = false;
@@ -55,6 +68,9 @@ class _LobbyScreenState extends State<LobbyScreen>
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
     _syncAvatar();
+    QuestionService.getCategories().then((cats) {
+      if (mounted && cats.isNotEmpty) setState(() => _categories = cats);
+    }).catchError((_) {});
   }
 
   Future<void> _syncAvatar() async {
@@ -187,19 +203,30 @@ class _LobbyScreenState extends State<LobbyScreen>
     }
   }
 
-  static String _categoryEmoji(String? cat) => switch (cat) {
-    'geography' => '🌍',
-    'history' => '📜',
-    'general_knowledge' => '🧠',
-    _ => '🔬',
-  };
+  Widget _buildCategoryChip(QuizCategory category) {
+    return _CategoryChip(
+      emoji: category.emoji,
+      label: category.name,
+      isHot: category.isHot,
+      selected: _pendingCategory == category.id,
+      onTap: () async {
+        if (_pendingCategory == category.id) return;
+        setState(() => _pendingCategory = category.id);
+        await RoomService.updateCategory(widget.roomId, category.id);
+      },
+    );
+  }
 
-  static String _categoryLabel(String? cat) => switch (cat) {
-    'geography' => 'Geography',
-    'history' => 'History',
-    'general_knowledge' => 'General Knowledge',
-    _ => 'Science',
-  };
+  QuizCategory? _categoryById(String? id) {
+    for (final c in _categories) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  String _categoryEmoji(String? cat) => _categoryById(cat)?.emoji ?? '🔬';
+
+  String _categoryLabel(String? cat) => _categoryById(cat)?.name ?? 'Science';
 
   void _copyRoomCode() {
     Clipboard.setData(ClipboardData(text: widget.roomId));
@@ -416,28 +443,9 @@ class _LobbyScreenState extends State<LobbyScreen>
                       Positioned(
                         top: -10,
                         right: -10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppTheme.blazeOrange,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.blazeOrange.withAlpha(80),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            'HOST',
-                            style: AppTheme.caption.copyWith(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                        child: SvgPicture.asset(
+                          'assets/icons/host_badge.svg',
+                          width: 56,
                         ),
                       ),
                     ],
@@ -536,70 +544,21 @@ class _LobbyScreenState extends State<LobbyScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _CategoryChip(
-                        emoji: '🔬',
-                        label: 'Science',
-                        selected: _pendingCategory == 'science',
-                        onTap: () async {
-                          if (_pendingCategory == 'science') return;
-                          setState(() => _pendingCategory = 'science');
-                          await RoomService.updateCategory(
-                              widget.roomId, 'science');
-                        },
+                // Chips laid out in rows of 2 (categories come from Firestore)
+                for (var i = 0; i < _categories.length; i += 2) ...[
+                  if (i > 0) const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: _buildCategoryChip(_categories[i])),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: i + 1 < _categories.length
+                            ? _buildCategoryChip(_categories[i + 1])
+                            : const SizedBox(),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _CategoryChip(
-                        emoji: '🌍',
-                        label: 'Geography',
-                        selected: _pendingCategory == 'geography',
-                        onTap: () async {
-                          if (_pendingCategory == 'geography') return;
-                          setState(() => _pendingCategory = 'geography');
-                          await RoomService.updateCategory(
-                              widget.roomId, 'geography');
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _CategoryChip(
-                        emoji: '📜',
-                        label: 'History',
-                        selected: _pendingCategory == 'history',
-                        onTap: () async {
-                          if (_pendingCategory == 'history') return;
-                          setState(() => _pendingCategory = 'history');
-                          await RoomService.updateCategory(
-                              widget.roomId, 'history');
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _CategoryChip(
-                        emoji: '🧠',
-                        label: 'General Knowledge',
-                        selected: _pendingCategory == 'general_knowledge',
-                        onTap: () async {
-                          if (_pendingCategory == 'general_knowledge') return;
-                          setState(
-                              () => _pendingCategory = 'general_knowledge');
-                          await RoomService.updateCategory(
-                              widget.roomId, 'general_knowledge');
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           )
@@ -943,12 +902,14 @@ class _SessionStatCol extends StatelessWidget {
 class _CategoryChip extends StatelessWidget {
   final String emoji;
   final String label;
+  final bool isHot;
   final bool selected;
   final VoidCallback onTap;
 
   const _CategoryChip({
     required this.emoji,
     required this.label,
+    this.isHot = false,
     required this.selected,
     required this.onTap,
   });
@@ -959,7 +920,6 @@ class _CategoryChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: selected
               ? AppTheme.electricBlue.withAlpha(15)
@@ -970,21 +930,32 @@ class _CategoryChip extends StatelessWidget {
             width: selected ? 2 : 1,
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: AppTheme.rowLabel.copyWith(
-                  color: selected ? AppTheme.electricBlue : AppTheme.ink,
-                  fontWeight: FontWeight.w700,
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.rowLabel.copyWith(
+                        color: selected ? AppTheme.electricBlue : AppTheme.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+            if (isHot)
+              const Positioned(
+                  top: -10, right: -8, child: HotBadge(height: 30)),
           ],
         ),
       ),

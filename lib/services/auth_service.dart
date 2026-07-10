@@ -42,7 +42,10 @@ class AuthService {
       final isAnon = anonUser?.isAnonymous ?? false;
 
       if (kIsWeb) {
-        final provider = GoogleAuthProvider();
+        final provider = GoogleAuthProvider()
+          // Always show the Google account chooser instead of silently
+          // reusing the last-used account.
+          ..setCustomParameters({'prompt': 'select_account'});
         if (isAnon) {
           try {
             final cred = await anonUser!.linkWithPopup(provider);
@@ -85,9 +88,13 @@ class AuthService {
         }
         return cred;
       } else {
-        final googleUser = await GoogleSignIn(
-          scopes: ['email', 'profile'],
-        ).signIn();
+        final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+        // Clear the cached account so signIn() opens the account chooser
+        // instead of silently reusing the last-used Google account.
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+        final googleUser = await googleSignIn.signIn();
         if (googleUser == null) return null;
 
         // Capture displayName from the Google SDK object NOW — it becomes
