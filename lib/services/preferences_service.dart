@@ -4,6 +4,18 @@ class PreferencesService {
   static const _keySounds = 'sounds_enabled';
   static const _keyMusic = 'music_enabled';
   static const _keyHaptics = 'haptics_enabled';
+  static const _keyQuestionLanguage = 'preferred_question_language';
+
+  /// Last question language the user picked ('en' or 'fr'). Default: English.
+  static Future<String> getQuestionLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyQuestionLanguage) ?? 'en';
+  }
+
+  static Future<void> setQuestionLanguage(String language) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyQuestionLanguage, language);
+  }
 
   static Future<bool> getSoundsEnabled() async {
     final prefs = await SharedPreferences.getInstance();

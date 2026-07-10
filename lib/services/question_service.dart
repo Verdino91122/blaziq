@@ -38,9 +38,14 @@ class TriviaQuestion {
   final String id;
   final String category;
   final String difficulty; // easy | medium | hard
-  final String question;
-  final String correctAnswer;
-  final List<String> incorrectAnswers;
+  final String question; // in the requested language
+  final String correctAnswer; // in the requested language
+  final List<String> incorrectAnswers; // in the requested language
+
+  /// The full raw Firestore document (root fields + 'en'/'fr' language maps).
+  /// Friend mode stores this in the room so each player can render the
+  /// question in their own language.
+  final Map<String, dynamic> raw;
 
   const TriviaQuestion({
     required this.id,
@@ -49,21 +54,28 @@ class TriviaQuestion {
     required this.question,
     required this.correctAnswer,
     required this.incorrectAnswers,
+    required this.raw,
   });
 
-  /// Works for both Firestore docs and local JSON entries — the field names
-  /// are identical (question, correct_answer, incorrect_answers, difficulty).
+  /// Extracts the requested language map ('en'/'fr') from a bilingual
+  /// Firestore doc. Falls back to 'en' if the language is missing, and to
+  /// flat root fields for legacy docs / the local JSON assets (English only).
   factory TriviaQuestion.fromMap(
-      String id, String categoryId, Map<String, dynamic> map) {
+      String id, String categoryId, Map<String, dynamic> map, String language) {
+    final langEntry = (map[language] ?? map['en']) as Map?;
+    final src = langEntry != null
+        ? Map<String, dynamic>.from(langEntry)
+        : map; // legacy flat structure
     return TriviaQuestion(
       id: id,
       category: map['category'] as String? ?? categoryId,
       difficulty: map['difficulty'] as String? ?? 'easy',
-      question: _decodeHtml(map['question'] as String? ?? ''),
-      correctAnswer: _decodeHtml(map['correct_answer'] as String? ?? ''),
-      incorrectAnswers: List<String>.from(map['incorrect_answers'] as List? ?? [])
+      question: _decodeHtml(src['question'] as String? ?? ''),
+      correctAnswer: _decodeHtml(src['correct_answer'] as String? ?? ''),
+      incorrectAnswers: List<String>.from(src['incorrect_answers'] as List? ?? [])
           .map(_decodeHtml)
           .toList(),
+      raw: map,
     );
   }
 }
@@ -74,6 +86,7 @@ class QuizCategory {
   final String emoji;
   final bool isHot;
   final int totalQuestions;
+  final List<String> supportedLanguages;
 
   const QuizCategory({
     required this.id,
@@ -81,6 +94,7 @@ class QuizCategory {
     required this.emoji,
     required this.isHot,
     required this.totalQuestions,
+    this.supportedLanguages = const ['en'],
   });
 
   factory QuizCategory.fromFirestore(String id, Map<String, dynamic> d) {
@@ -90,6 +104,8 @@ class QuizCategory {
       emoji: d['emoji'] as String? ?? '❓',
       isHot: d['isHot'] as bool? ?? false,
       totalQuestions: (d['totalQuestions'] as num?)?.toInt() ?? 0,
+      supportedLanguages:
+          List<String>.from(d['supportedLanguages'] as List? ?? ['en']),
     );
   }
 }
@@ -164,23 +180,27 @@ class QuestionService {
   /// questions it is topped up with seen ones so the game never fails to
   /// start. Falls back to the bundled JSON assets if Firestore fails.
   ///
+  /// [language] selects which language map ('en'/'fr') the returned question
+  /// text comes from; question IDs and seen tracking are language-agnostic.
   /// [excludeIds] additionally excludes not-yet-answered questions from the
   /// current session (used by solo mode prefetch to avoid duplicates).
   static Future<List<TriviaQuestion>> getSessionQuestions(
     String categoryId, {
+    String language = 'en',
     Set<String> excludeIds = const {},
   }) async {
     final seen = (await getSeenIds(categoryId)).toSet();
     try {
       final session = [
-        ...await _fetchDifficulty(categoryId, 'easy', _easyCount, seen, excludeIds),
-        ...await _fetchDifficulty(categoryId, 'medium', _mediumCount, seen, excludeIds),
-        ...await _fetchDifficulty(categoryId, 'hard', _hardCount, seen, excludeIds),
+        ...await _fetchDifficulty(categoryId, 'easy', _easyCount, language, seen, excludeIds),
+        ...await _fetchDifficulty(categoryId, 'medium', _mediumCount, language, seen, excludeIds),
+        ...await _fetchDifficulty(categoryId, 'hard', _hardCount, language, seen, excludeIds),
       ];
       if (session.isEmpty) throw Exception('No questions in Firestore');
       return session;
     } catch (_) {
-      return _loadLocalSession(categoryId, seen, excludeIds);
+      // Local JSON assets are English-only — acceptable last-resort fallback.
+      return _loadLocalSession(categoryId, language, seen, excludeIds);
     }
   }
 
@@ -188,6 +208,7 @@ class QuestionService {
     String categoryId,
     String difficulty,
     int count,
+    String language,
     Set<String> seen,
     Set<String> exclude,
   ) async {
@@ -202,7 +223,8 @@ class QuestionService {
         .limit(limit)
         .get();
     final all = snap.docs
-        .map((doc) => TriviaQuestion.fromMap(doc.id, categoryId, doc.data()))
+        .map((doc) =>
+            TriviaQuestion.fromMap(doc.id, categoryId, doc.data(), language))
         .toList();
     return _pickForSession(all, count, seen, exclude);
   }
@@ -230,6 +252,7 @@ class QuestionService {
   /// Only the original 4 categories ship as assets; other categories rethrow.
   static Future<List<TriviaQuestion>> _loadLocalSession(
     String categoryId,
+    String language,
     Set<String> seen,
     Set<String> exclude,
   ) async {
@@ -238,7 +261,10 @@ class QuestionService {
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final all = (json['questions'] as List)
         .map((e) => TriviaQuestion.fromMap(
-            (e as Map<String, dynamic>)['id'] as String? ?? '', categoryId, e))
+            (e as Map<String, dynamic>)['id'] as String? ?? '',
+            categoryId,
+            e,
+            language))
         .toList();
     List<TriviaQuestion> group(String difficulty, int count) => _pickForSession(
         all.where((q) => q.difficulty == difficulty).toList(),

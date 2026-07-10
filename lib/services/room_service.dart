@@ -7,51 +7,109 @@ import 'question_service.dart';
 
 // ── Question model ─────────────────────────────────────────────────────────────
 
+/// Bilingual friend-mode question. All language versions are stored so each
+/// player's device renders the question in their own chosen language.
+///
+/// Answers are identified by CANONICAL INDEX everywhere (Firestore + game
+/// logic): 0 = correct_answer, 1..3 = incorrect_answers[0..2]. The index is
+/// the same across languages, which makes cross-language answer display
+/// trivial. [answerOrder] is the shared shuffled display order of those
+/// indices, so both players see the same button layout.
 class FriendQuestion {
   final String id;
   final String difficulty;
-  final String question;
-  final String correctAnswer;
-  final List<String> shuffledAnswers;
+
+  /// {'en': {question, correct_answer, incorrect_answers}, 'fr': {...}}
+  final Map<String, Map<String, dynamic>> translations;
+
+  /// Shuffled canonical indices in display order (generated once by the host).
+  final List<int> answerOrder;
 
   const FriendQuestion({
     required this.id,
     required this.difficulty,
-    required this.question,
-    required this.correctAnswer,
-    required this.shuffledAnswers,
+    required this.translations,
+    required this.answerOrder,
   });
 
-  /// Converts a QuestionService question, shuffling the answer order once so
-  /// both players see the same layout.
+  /// Builds from a QuestionService question, keeping every language map from
+  /// the raw Firestore doc and shuffling the display order once.
   factory FriendQuestion.fromTrivia(TriviaQuestion q) {
-    final all = [q.correctAnswer, ...q.incorrectAnswers]..shuffle();
+    final translations = <String, Map<String, dynamic>>{};
+    q.raw.forEach((key, value) {
+      if (value is Map && value.containsKey('question')) {
+        translations[key] = Map<String, dynamic>.from(value);
+      }
+    });
+    if (translations.isEmpty) {
+      // Legacy flat doc / local JSON fallback — English only.
+      translations['en'] = {
+        'question': q.question,
+        'correct_answer': q.correctAnswer,
+        'incorrect_answers': q.incorrectAnswers,
+      };
+    }
+    final answerCount = 1 +
+        ((translations['en'] ?? translations.values.first)['incorrect_answers']
+                    as List? ??
+                const [])
+            .length;
+    final order = List<int>.generate(answerCount, (i) => i)..shuffle();
     return FriendQuestion(
       id: q.id,
       difficulty: q.difficulty,
-      question: q.question,
-      correctAnswer: q.correctAnswer,
-      shuffledAnswers: all,
+      translations: translations,
+      answerOrder: order,
     );
   }
 
   factory FriendQuestion.fromFirestore(Map<String, dynamic> map) {
+    final translations = <String, Map<String, dynamic>>{};
+    (map['translations'] as Map?)?.forEach((key, value) {
+      if (value is Map) {
+        translations[key as String] = Map<String, dynamic>.from(value);
+      }
+    });
     return FriendQuestion(
       id: map['id'] as String? ?? '',
       difficulty: map['difficulty'] as String? ?? 'easy',
-      question: map['question'] as String? ?? '',
-      correctAnswer: map['correctAnswer'] as String? ?? '',
-      shuffledAnswers: List<String>.from(map['shuffledAnswers'] as List? ?? []),
+      translations: translations,
+      answerOrder: ((map['answerOrder'] as List?) ?? const [0, 1, 2, 3])
+          .map((e) => (e as num).toInt())
+          .toList(),
     );
   }
 
   Map<String, dynamic> toMap() => {
         'id': id,
         'difficulty': difficulty,
-        'question': question,
-        'correctAnswer': correctAnswer,
-        'shuffledAnswers': shuffledAnswers,
+        'translations': translations,
+        'answerOrder': answerOrder,
       };
+
+  Map<String, dynamic> _lang(String language) =>
+      translations[language] ?? translations['en'] ?? const {};
+
+  String questionFor(String language) =>
+      _lang(language)['question'] as String? ?? '';
+
+  /// Canonical answer pool: index 0 = correct, 1..3 = incorrect answers.
+  List<String> answerPoolFor(String language) {
+    final m = _lang(language);
+    return [
+      m['correct_answer'] as String? ?? '',
+      ...List<String>.from(m['incorrect_answers'] as List? ?? const []),
+    ];
+  }
+
+  /// Answer texts in the shared display order, in the given language.
+  List<String> answersFor(String language) {
+    final pool = answerPoolFor(language);
+    return [
+      for (final i in answerOrder)
+        if (i < pool.length) pool[i],
+    ];
+  }
 }
 
 // ── Room document model ────────────────────────────────────────────────────────
@@ -76,13 +134,15 @@ class RoomData {
   final Timestamp? guestConnected;
 
   final String category;
+  final String hostLanguage; // 'en' | 'fr'
+  final String guestLanguage; // 'en' | 'fr'
   final String status; // waiting | lobby | countdown | playing | finished
   final int currentQuestionIndex;
   final FriendQuestion? currentQuestion;
   final List<FriendQuestion> questions; // full session list (host-fetched)
   final String phase; // buzzer | answering | inherited | transition | sudden_death | finished
   final String? buzzerWinner;
-  final String? buzzerWrongAnswer;
+  final int? buzzerWrongIndex; // canonical index of buzzer winner's wrong answer
   final String? winnerId;
   final String? quitUid; // set when a player confirms quit mid-game
 
@@ -116,13 +176,15 @@ class RoomData {
     required this.guestReady,
     this.guestConnected,
     required this.category,
+    this.hostLanguage = 'en',
+    this.guestLanguage = 'en',
     required this.status,
     required this.currentQuestionIndex,
     this.currentQuestion,
     this.questions = const [],
     required this.phase,
     this.buzzerWinner,
-    this.buzzerWrongAnswer,
+    this.buzzerWrongIndex,
     this.winnerId,
     this.quitUid,
     required this.hostGamesWon,
@@ -155,6 +217,8 @@ class RoomData {
       guestReady: d['guestReady'] as bool? ?? false,
       guestConnected: d['guestConnected'] as Timestamp?,
       category: d['category'] as String? ?? 'science',
+      hostLanguage: d['hostLanguage'] as String? ?? 'en',
+      guestLanguage: d['guestLanguage'] as String? ?? 'en',
       status: d['status'] as String? ?? 'waiting',
       currentQuestionIndex: (d['currentQuestionIndex'] as num?)?.toInt() ?? 0,
       currentQuestion: qMap != null ? FriendQuestion.fromFirestore(qMap) : null,
@@ -164,7 +228,7 @@ class RoomData {
           .toList(),
       phase: d['phase'] as String? ?? 'buzzer',
       buzzerWinner: d['buzzerWinner'] as String?,
-      buzzerWrongAnswer: d['buzzerWrongAnswer'] as String?,
+      buzzerWrongIndex: (d['buzzerWrongIndex'] as num?)?.toInt(),
       winnerId: d['winnerId'] as String?,
       quitUid: d['quitUid'] as String?,
       hostGamesWon: (d['hostGamesWon'] as num?)?.toInt() ?? 0,
@@ -178,6 +242,8 @@ class RoomData {
     );
   }
 
+  String languageFor(String uid) =>
+      uid == hostUid ? hostLanguage : guestLanguage;
   int gamesWonFor(String uid) => uid == hostUid ? hostGamesWon : guestGamesWon;
   int totalScoreFor(String uid) => uid == hostUid ? hostTotalScore : guestTotalScore;
   String nameFor(String uid) => uid == hostUid ? hostName : (guestName ?? 'Player');
@@ -254,6 +320,7 @@ class RoomService {
     required User host,
     required Map<String, dynamic> hostData,
     required String category,
+    String language = 'en',
   }) async {
     final roomId = _generateRoomId();
     final questions = await _fetchSessionQuestions(category);
@@ -277,6 +344,8 @@ class RoomService {
       'guestReady': false,
       'guestConnected': null,
       'category': category,
+      'hostLanguage': language,
+      'guestLanguage': 'en',
       'status': 'waiting',
       'currentQuestionIndex': 0,
       'currentQuestion': firstQ.toMap(),
@@ -284,7 +353,7 @@ class RoomService {
       'totalQuestions': questions.length,
       'phase': 'buzzer',
       'buzzerWinner': null,
-      'buzzerWrongAnswer': null,
+      'buzzerWrongIndex': null,
       'winnerId': null,
       'quitUid': null,
       'hostGamesWon': 0,
@@ -306,6 +375,7 @@ class RoomService {
     required String roomId,
     required User guest,
     required Map<String, dynamic> guestData,
+    String language = 'en',
   }) async {
     final ref = _db.collection('rooms').doc(roomId.toUpperCase());
 
@@ -322,9 +392,22 @@ class RoomService {
         'guestName': guestData['displayName'] ?? guestData['username'] ?? 'Player',
         'guestAvatar': _resolveAvatar(guestData, guest),
         'guestLevel': (guestData['level'] as num?)?.toInt() ?? 1,
+        'guestLanguage': language,
         'guestConnected': FieldValue.serverTimestamp(),
         'status': 'lobby',
       });
+    });
+  }
+
+  /// Sets a player's question language ('en'/'fr') on the room document.
+  static Future<void> setLanguage(
+      String roomId, String uid, String language) async {
+    final ref = _db.collection('rooms').doc(roomId);
+    final snap = await ref.get();
+    if (!snap.exists) return;
+    final isHost = snap.data()!['hostUid'] == uid;
+    await ref.update({
+      if (isHost) 'hostLanguage': language else 'guestLanguage': language,
     });
   }
 
@@ -400,10 +483,14 @@ class RoomService {
   /// Submits an answer for the current phase.
   /// Phase 'answering' → buzzer winner submitting.
   /// Phase 'inherited' → inheritor (non-buzzer-winner) submitting.
+  ///
+  /// [answerIndex] is the CANONICAL answer index (0 = correct answer,
+  /// 1..3 = incorrect_answers[0..2]), which is language-independent;
+  /// null = timeout. Correctness is simply answerIndex == 0.
   static Future<void> submitAnswer({
     required String roomId,
     required String uid,
-    required String? answer, // null = timeout
+    required int? answerIndex, // null = timeout
   }) async {
     final ref = _db.collection('rooms').doc(roomId);
     await _db.runTransaction((tx) async {
@@ -413,8 +500,7 @@ class RoomService {
       final phase = d['phase'] as String? ?? '';
       final q = d['currentQuestion'] as Map<String, dynamic>?;
       if (q == null) return;
-      final correct = q['correctAnswer'] as String;
-      final isCorrect = answer != null && answer == correct;
+      final isCorrect = answerIndex == 0;
       final isHost = d['hostUid'] == uid;
       final scoreField = isHost ? 'hostScore' : 'guestScore';
       final correctField = isHost ? 'hostCorrect' : 'guestCorrect';
@@ -439,7 +525,7 @@ class RoomService {
           // Buzzer winner wrong/timeout: -1 pt, move to inherited
           tx.update(ref, {
             scoreField: (currentScore - 1).clamp(0, 99999),
-            'buzzerWrongAnswer': answer,
+            'buzzerWrongIndex': answerIndex,
             'phase': 'inherited',
             'inheritedDeadlineAt': Timestamp.fromMillisecondsSinceEpoch(
               DateTime.now().millisecondsSinceEpoch + 10000,
@@ -507,7 +593,7 @@ class RoomService {
       'currentQuestion': nextQ,
       'phase': 'buzzer',
       'buzzerWinner': null,
-      'buzzerWrongAnswer': null,
+      'buzzerWrongIndex': null,
       'phaseStartedAt': FieldValue.serverTimestamp(),
       'buzzerPressedAt': null,
       'nextQuestionAt': null,
@@ -539,7 +625,7 @@ class RoomService {
         'phase': 'sudden_death',
         'currentQuestion': sdQ,
         'buzzerWinner': null,
-        'buzzerWrongAnswer': null,
+        'buzzerWrongIndex': null,
       });
     } else {
       final winnerId =
@@ -624,7 +710,7 @@ class RoomService {
         'questions': questions.map((q) => q.toMap()).toList(),
         'totalQuestions': questions.length,
         'buzzerWinner': null,
-        'buzzerWrongAnswer': null,
+        'buzzerWrongIndex': null,
         'winnerId': null,
         'quitUid': null,
         'gameStartedAt': null,

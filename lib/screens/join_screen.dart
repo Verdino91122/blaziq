@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
 import '../services/room_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
@@ -50,6 +51,7 @@ class _JoinScreenState extends State<JoinScreen> {
         roomId: roomId,
         guest: user,
         guestData: userData ?? {},
+        language: await PreferencesService.getQuestionLanguage(),
       );
       if (!mounted) return;
       Navigator.pushReplacement(

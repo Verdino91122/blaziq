@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/remote_config_service.dart';
 import 'services/user_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_shell.dart';
@@ -18,6 +19,9 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Fire-and-forget: RemoteConfigService.init() swallows its own errors and
+  // must never delay startup.
+  unawaited(RemoteConfigService.init());
   final authError = await AuthService.ensureAnonymousSignIn();
   if (authError != null) debugPrint('[Blaziq] Anonymous auth failed: $authError');
 
@@ -29,17 +33,27 @@ void main() async {
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    systemNavigationBarColor: Colors.white,
-    systemNavigationBarIconBrightness: Brightness.dark,
-    systemNavigationBarContrastEnforced: false,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(kSystemOverlayStyle);
 
   FlutterNativeSplash.remove();
   runApp(const BlaziQApp());
 }
+
+/// App-wide system bar style: dark status AND navigation icons — the app has
+/// a light background on every screen. Applied once at startup and re-asserted
+/// every frame by the AnnotatedRegion in BlaziQApp, because a one-shot
+/// SystemChrome call can be clobbered on newer Android (edge-to-edge window
+/// re-applies its appearance after startup/splash).
+/// android:windowLightNavigationBar in styles.xml (v27+) covers the native
+/// window before Flutter's first frame.
+const kSystemOverlayStyle = SystemUiOverlayStyle(
+  statusBarColor: Colors.transparent,
+  statusBarIconBrightness: Brightness.dark,
+  statusBarBrightness: Brightness.light, // iOS
+  systemNavigationBarColor: Colors.white,
+  systemNavigationBarIconBrightness: Brightness.dark,
+  systemNavigationBarContrastEnforced: false,
+);
 
 class BlaziQApp extends StatefulWidget {
   const BlaziQApp({super.key});
@@ -75,6 +89,12 @@ class _BlaziQAppState extends State<BlaziQApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       navigatorKey: _navKey,
+      // Re-asserts the system bar style on every frame so the Android
+      // navigation buttons stay dark no matter what a route or the OS does.
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: kSystemOverlayStyle,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: const _AppRouter(),
     );
   }

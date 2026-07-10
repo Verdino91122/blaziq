@@ -69,10 +69,12 @@ class _CheatCallbacks {
 
 class SoloGameScreen extends StatefulWidget {
   final String categoryId;
+  final String language; // 'en' | 'fr'
   final bool cheatMode;
   const SoloGameScreen({
     super.key,
     required this.categoryId,
+    this.language = 'en',
     this.cheatMode = false,
   });
 
@@ -144,6 +146,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     };
     final session = await QuestionService.getSessionQuestions(
       widget.categoryId,
+      language: widget.language,
       excludeIds: exclude,
     );
     if (session.isEmpty) throw Exception('No questions available.');

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
+import '../services/remote_config_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import 'host_screen.dart';
@@ -14,13 +17,53 @@ class FriendModeScreen extends StatefulWidget {
 }
 
 class _FriendModeScreenState extends State<FriendModeScreen> {
+  static const _playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.blaziq.blaziq';
+
   bool _checkingUsername = true;
   bool _hasValidUsername = false;
+  bool _updateRequired = false;
 
   @override
   void initState() {
     super.initState();
-    _checkUsername();
+    _runChecks();
+  }
+
+  Future<void> _runChecks() async {
+    await _checkVersion();
+    if (!mounted) return;
+    if (_updateRequired) {
+      // Old build — don't bother with the nickname flow, just show the prompt.
+      setState(() => _checkingUsername = false);
+      return;
+    }
+    await _checkUsername();
+  }
+
+  /// Compares this build's version code against the Remote Config minimum.
+  /// If the version can't be determined (e.g. PackageInfo throwing on Chrome
+  /// debug), the user is NOT blocked.
+  Future<void> _checkVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final current = int.tryParse(info.buildNumber);
+      final minimum = RemoteConfigService.getMinimumFriendModeVersion();
+      if (current != null && current < minimum) {
+        _updateRequired = true;
+      }
+    } catch (_) {
+      // Unknown version — let the user through.
+    }
+  }
+
+  Future<void> _openPlayStore() async {
+    try {
+      await launchUrl(
+        Uri.parse(_playStoreUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {}
   }
 
   Future<void> _checkUsername() async {
@@ -110,6 +153,8 @@ class _FriendModeScreenState extends State<FriendModeScreen> {
             const Spacer(),
             if (_checkingUsername)
               const CircularProgressIndicator(color: AppTheme.electricBlue)
+            else if (_updateRequired)
+              _UpdateRequiredCard(onUpdate: _openPlayStore)
             else
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -136,6 +181,73 @@ class _FriendModeScreenState extends State<FriendModeScreen> {
               ),
             const Spacer(),
             const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Update required card ─────────────────────────────────────────────────────
+
+class _UpdateRequiredCard extends StatelessWidget {
+  final VoidCallback onUpdate;
+
+  const _UpdateRequiredCard({required this.onUpdate});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.deepGrey),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.ink.withAlpha(12),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.system_update_rounded,
+                color: AppTheme.electricBlue, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Update Required',
+              style: AppTheme.subheading
+                  .copyWith(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Friend Mode requires the latest version of Blaziq. '
+              'Please update to continue playing with friends.',
+              style: AppTheme.bodyMuted,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: onUpdate,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppTheme.electricBlue,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  'Update Now',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.buttonLabel,
+                ),
+              ),
+            ),
           ],
         ),
       ),

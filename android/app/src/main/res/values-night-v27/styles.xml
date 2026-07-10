@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Overrides only NormalTheme: windowLightNavigationBar needs API 27+.
+         LaunchTheme still resolves from values-night/styles.xml.
+         (API 31+ devices use the values-night-v31 bucket instead.) -->
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- App stays light-themed even in system dark mode — keep dark nav icons -->
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

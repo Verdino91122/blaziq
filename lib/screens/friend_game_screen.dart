@@ -55,7 +55,8 @@ class _FriendGameScreenState extends State<FriendGameScreen>
   bool _gameEnded = false;
   bool _navigating = false;
   bool _markedQuestionsSeen = false;
-  String? _myAnswer;
+  // Canonical answer index (0 = correct, 1..3 = incorrect) — language-agnostic.
+  int? _myAnswerIndex;
   bool _answered = false;
   String? _lastQuestionId;
   String? _lastPhase;
@@ -279,12 +280,12 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     if (_answered) return;
     setState(() {
       _answered = true;
-      _myAnswer = null;
+      _myAnswerIndex = null;
     });
     RoomService.submitAnswer(
       roomId: widget.roomId,
       uid: widget.myUid,
-      answer: null,
+      answerIndex: null,
     );
   }
 
@@ -403,7 +404,7 @@ class _FriendGameScreenState extends State<FriendGameScreen>
         _answerTimer?.cancel();
         setState(() {
           _answerSecondsLeft = 0;
-          _myAnswer = null;
+          _myAnswerIndex = null;
           _answered = false;
           _showSuddenDeathBanner = true;
         });
@@ -437,7 +438,7 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     _stopBuzzerCountdown();
     if (_buzzerShakeCtrl.isAnimating == false) _buzzerShakeCtrl.repeat();
     setState(() {
-      _myAnswer = null;
+      _myAnswerIndex = null;
       _answered = false;
       _lastQuestionId = room.currentQuestion?.id;
       _answerSecondsLeft = 0;
@@ -564,7 +565,9 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     await RoomService.pressBuzzer(widget.roomId, widget.myUid);
   }
 
-  void _tapAnswer(String answer, RoomData room) {
+  /// [canonicalIndex]: 0 = correct answer, 1..3 = incorrect answers — the
+  /// language-independent answer identity stored in Firestore.
+  void _tapAnswer(int canonicalIndex, RoomData room) {
     if (_answered) return;
     final phase = room.phase;
     final iAmAllowedToAnswer =
@@ -574,14 +577,14 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     if (!iAmAllowedToAnswer) return;
 
     setState(() {
-      _myAnswer = answer;
+      _myAnswerIndex = canonicalIndex;
       _answered = true;
     });
     _answerTimer?.cancel();
     RoomService.submitAnswer(
       roomId: widget.roomId,
       uid: widget.myUid,
-      answer: answer,
+      answerIndex: canonicalIndex,
     );
   }
 
@@ -975,6 +978,9 @@ class _FriendGameScreenState extends State<FriendGameScreen>
     );
   }
 
+  /// This player's chosen question language, read live from the room doc.
+  String _myLang(RoomData room) => room.languageFor(widget.myUid);
+
   Widget _buildQuestionCard(RoomData room) {
     final q = room.currentQuestion;
     return Padding(
@@ -995,7 +1001,7 @@ class _FriendGameScreenState extends State<FriendGameScreen>
         padding: const EdgeInsets.all(20),
         child: Center(
           child: AutoSizeText(
-            q?.question ?? '',
+            q?.questionFor(_myLang(room)) ?? '',
             style: AppTheme.questionText,
             textAlign: TextAlign.center,
             minFontSize: 13,
@@ -1060,7 +1066,14 @@ class _FriendGameScreenState extends State<FriendGameScreen>
   }
 
   Widget _buildAnswerGrid(RoomData room, FriendQuestion q) {
-    final answers = q.shuffledAnswers;
+    // Answer texts in MY language, in the shared display order; the canonical
+    // index at each position is the same on both devices, so an opponent's
+    // pick maps to the same position in the viewer's own language.
+    final pool = q.answerPoolFor(_myLang(room));
+    final order = [
+      for (final i in q.answerOrder)
+        if (i < pool.length) i,
+    ];
     return GridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: 8,
@@ -1068,34 +1081,36 @@ class _FriendGameScreenState extends State<FriendGameScreen>
       childAspectRatio: 2.4,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: List.generate(answers.length > 4 ? 4 : answers.length, (i) {
-        final answer = answers[i];
-        final state = _answerStateFor(answer, room, q);
+      children: List.generate(order.length > 4 ? 4 : order.length, (i) {
+        final canonicalIndex = order[i];
+        final state = _answerStateFor(canonicalIndex, room);
         return _AnswerButton(
-          text: answer,
+          text: pool[canonicalIndex],
           state: state,
           borderRadius: _borderRadiusFor(i),
-          onTap: state == 'active' ? () => _tapAnswer(answer, room) : null,
+          onTap: state == 'active'
+              ? () => _tapAnswer(canonicalIndex, room)
+              : null,
           // 'idle' has null onTap — white styling but non-tappable (buzzer phase)
         );
       }),
     );
   }
 
-  String _answerStateFor(String answer, RoomData room, FriendQuestion q) {
+  String _answerStateFor(int canonicalIndex, RoomData room) {
     final phase = room.phase;
-    final correct = q.correctAnswer;
+    final isCorrect = canonicalIndex == 0; // canonical 0 = correct answer
 
     // Reveal flash: briefly show correct before Get Ready overlay
-    if (_revealCorrect && answer == correct) return 'correct';
+    if (_revealCorrect && isCorrect) return 'correct';
 
     // After I've answered — show result immediately
     if (_answered) {
-      if (answer == _myAnswer) {
-        return answer == correct ? 'correct' : 'wrong';
+      if (canonicalIndex == _myAnswerIndex) {
+        return isCorrect ? 'correct' : 'wrong';
       }
       // Do NOT reveal correct answer here — only reveal during _revealCorrect flash
-      if (answer == room.buzzerWrongAnswer && phase == 'inherited') {
+      if (canonicalIndex == room.buzzerWrongIndex && phase == 'inherited') {
         return 'crossed';
       }
       return 'greyed';
@@ -1109,7 +1124,7 @@ class _FriendGameScreenState extends State<FriendGameScreen>
       case 'answering':
         return iWonBuzzer ? 'active' : 'greyed';
       case 'inherited':
-        if (answer == room.buzzerWrongAnswer) return 'crossed';
+        if (canonicalIndex == room.buzzerWrongIndex) return 'crossed';
         if (!iWonBuzzer) return 'active'; // I am the inheritor
         return 'greyed';
       case 'sudden_death':

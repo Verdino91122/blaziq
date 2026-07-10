@@ -11,8 +11,9 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - Firebase Auth (Anonymous on first launch + Google Sign-In for account linking)
 - Firebase Firestore (database + leaderboard + user profiles)
 - Questions: Firestore (questions/{categoryId}/items) via QuestionService —
-  pre-generated AI trivia; local JSON assets in assets/data/ kept as offline
-  fallback only (Open Trivia DB API no longer used)
+  pre-generated AI trivia, bilingual (en/fr language maps per question);
+  local JSON assets in assets/data/ kept as offline fallback only, English
+  only (Open Trivia DB API no longer used)
 - http package for API calls (country detection; handles both mobile and web)
 - google_fonts ^8.0.0 for Fira Sans (w400–w800; all screens)
 - auto_size_text ^3.0.0 for question card and answer buttons in solo game
@@ -25,6 +26,8 @@ Target platforms: iOS and Android (primary), Web (secondary)
 - package_info_plus ^8.0.0 for reading app version at runtime (used in AboutScreen); wrapped in try/catch with '1.0.0' fallback (PackageInfo can throw on Chrome debug)
 - url_launcher ^6.3.0 for opening mailto: and https:// links (used in AboutScreen); AndroidManifest queries added for https + mailto schemes; use LaunchMode.platformDefault (not externalApplication) + skip canLaunchUrl (returns false for mailto: on Chrome); Rate App uses LaunchMode.externalApplication to open Play Store
 - share_plus ^10.0.0 for native share sheet (Share.share()); used in Settings → Share App
+- firebase_remote_config ^5.0.0 for feature gating (minimum version checks);
+  see "Remote Config version gating" section
 - State management: Provider or simple StatefulWidget — nothing heavier
 
 ## Design System
@@ -73,6 +76,12 @@ Google brand colors and leaderboard avatar palette are unchanged.
 
 Corner radius: 12–16px rounded cards (16px question card, 14–16px buttons, 20px mode cards)
 Status bar icons: dark (Brightness.dark) — app has light background
+Android system navigation buttons: dark icons, enforced at three layers —
+kSystemOverlayStyle const in main.dart (one-shot SystemChrome call + an
+AnnotatedRegion in MaterialApp.builder re-asserting it every frame) and
+android:windowLightNavigationBar=true on NormalTheme in styles.xml
+(values-v27 / values-night-v27 / values-v31 / values-night-v31; night stays
+light-nav because the app is light-themed regardless of system dark mode)
 Navigation bar: floating 5-circle pill, white fill, purple drop shadow; electricBlue 44px circle behind selected icon; icons white (selected) / black (unselected); 250ms easeInOut fade
 
 ## Brand Identity
@@ -123,10 +132,12 @@ No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in
 - Grid texture overlay on mode cards: subtle deepGrey lines
 
 ### Solo Mode Game Screen (not in nav bar)
-- Entry: tapping the Solo card opens a category picker bottom sheet
-  (categories live from Firestore via QuestionService.getCategories(),
-  HOT 🔥 badge on isHot categories); picking one launches
-  SoloGameScreen(categoryId: ...)
+- Entry: tapping the Solo card opens a bottom sheet with a "Choose Question
+  Language" step (English 🇬🇧 / French 🇫🇷 pills, default English, persisted to
+  shared_preferences key preferred_question_language) followed by the category
+  grid (categories live from Firestore via QuestionService.getCategories(),
+  HOT badge on isHot categories); picking one launches
+  SoloGameScreen(categoryId: ..., language: ...)
 - Background: cloudWhite full screen
 - Top bar: white background, X quit button left, difficulty pill center
   (small colored dot + difficulty label in ink, softGrey pill bg), score right
@@ -341,6 +352,27 @@ Collection: leaderboard
     - avatarUrl: string
     - updatedAt: timestamp
 
+## Remote Config version gating
+- RemoteConfigService (lib/services/remote_config_service.dart): initialized
+  fire-and-forget in main() right after Firebase.initializeApp (unawaited +
+  internal try/catch — never blocks or crashes startup); 1-hour minimum fetch
+  interval, 10s fetch timeout, in-app default minimum_friend_mode_version = 1
+- FriendModeScreen checks PackageInfo buildNumber (pubspec version +N) against
+  getMinimumFriendModeVersion() on load, BEFORE the nickname check. If below:
+  Host/Join buttons are replaced by an "Update Required" card (system_update
+  icon, message, "Update Now" button → Play Store listing via url_launcher
+  externalApplication). If the build number can't be determined (PackageInfo
+  can throw on Chrome debug), the user is NOT blocked.
+- Server template (blaziq-1822) also holds minimum_solo_mode_version,
+  minimum_online_mode_version, minimum_app_version, app_maintenance_mode,
+  app_maintenance_message — created in console, only friend gating is wired
+  in-app so far. minimum_friend_mode_version is currently 8 (= the bilingual
+  room-structure release; pubspec is 1.0.0+8). Old builds ≤7 see the update
+  prompt instead of failing silently on incompatible room data.
+- To test: set minimum_friend_mode_version to 999 in Firebase Console →
+  Remote Config, relaunch the app (or wait out the 1h fetch interval), open
+  Friend Mode; set back to 8 afterwards.
+
 ## Country Detection
 - Country is detected via `http://ip-api.com/json?fields=status,countryCode` on first doc creation
 - Android allows cleartext HTTP to ip-api.com via `android/app/src/main/res/xml/network_security_config.xml`
@@ -397,46 +429,83 @@ This is the most complex feature — build after friend and online modes are com
 
 ## Question Architecture (Firestore — replaces Open Trivia DB + primary JSON)
 
-### Firestore collections
+### Firestore collections (bilingual since Phase 6.75)
 Collection: categories
   Document: {categoryId}   (science, geography, history, general_knowledge,
                             sports, entertainment, technology, nature_animals, world_cup)
     - name: string · emoji: string · isHot: bool · totalQuestions: number · enabled: bool
+    - supportedLanguages: string[] (currently ['en', 'fr'])
 
 Collection: questions
   Document: {categoryId}
     Subcollection: items
       Document: {questionId}  (e.g. science_easy_0001)
-        - question: string · correct_answer: string · incorrect_answers: string[]
-        - difficulty: 'easy' | 'medium' | 'hard' · category: string
+        - difficulty: 'easy' | 'medium' | 'hard' · category: string · createdAt
+        - en: { question, correct_answer, incorrect_answers[] }
+        - fr: { question, correct_answer, incorrect_answers[] }
+        ⚠️ en/fr incorrect_answers arrays are NOT semantically aligned by index
+        (the FR list is a shuffled translation) — cross-language answer display
+        maps by index, so the crossed/selected answer shown to a viewer in the
+        other language can be a different wrong answer. Correct ↔ correct always
+        maps cleanly (index 0). Game fairness is unaffected (always exactly
+        one wrong answer crossed).
 
 Rules (deployed): questions/{categoryId}/items and categories allow read if
 request.auth != null; writes denied (content is seeded out-of-band).
 
 ### QuestionService (lib/services/question_service.dart)
-- getSessionQuestions(categoryId, {excludeIds}) — one game session:
+- getSessionQuestions(categoryId, {language, excludeIds}) — one game session:
   7 easy + 5 medium + 3 hard (15 total), shuffled within each difficulty group,
-  returned easy → medium → hard. Excludes locally-seen question IDs; if a
+  returned easy → medium → hard. `language` ('en' default | 'fr') selects which
+  language map the returned TriviaQuestion text comes from (falls back to 'en',
+  then to flat legacy fields). Excludes locally-seen question IDs; if a
   difficulty runs out of unseen questions it tops up with seen ones so the game
   never fails to start. Firestore fetch window per difficulty grows with the
   seen list (count×4 + seen) so unseen questions stay reachable cheaply.
+- TriviaQuestion carries `raw` — the full bilingual Firestore doc — so friend
+  mode can store both language versions in the room document
 - Fallback: if Firestore fails entirely, loads assets/data/questions_{cat}.json
-  (only the original 4 categories ship as assets — last-resort offline only)
-- Seen tracking (shared_preferences): seen_{categoryId} = list of question IDs;
-  seen_reset_date = epoch millis — all seen lists auto-clear after 60 days
+  (only the original 4 categories ship as assets — English only, last-resort)
+- Seen tracking (shared_preferences): seen_{categoryId} = list of question IDs
+  (language-agnostic); seen_reset_date = epoch millis — auto-clear after 60 days
 - markSeen(categoryId, id) / markSeenAll(categoryId, ids) — called by game screens
-- getCategories() — categories where enabled == true, isHot first then alphabetical
+- getCategories() — categories where enabled == true, isHot first then alphabetical;
+  QuizCategory includes supportedLanguages
 - HTML entities are decoded inside QuestionService (models arrive clean)
+- Language preference: PreferencesService.get/setQuestionLanguage() —
+  shared_preferences key preferred_question_language, default 'en'; written by
+  the solo sheet and the lobby language selector, read as the default everywhere
 
 ### How the game modes use it
-- Solo: category picker sheet on Home → SoloGameScreen(categoryId);
-  session fetch + prefetch; markSeen after each answered question
-- Friend: HOST (and lobby category change / rematch) fetches the session on the
-  host's device and stores the full 15-question list in the room document
-  ('questions' array + totalQuestions) so both players play identical questions;
-  nextQuestion()/sudden death read from that stored list — no per-question fetch.
+- Solo: language + category picker sheet on Home → SoloGameScreen(categoryId,
+  language); session fetch + prefetch in that language; markSeen after each
+  answered question
+- Friend (bilingual): HOST (and lobby category change / rematch) fetches the
+  session on the host's device and stores the full 15-question list in the room
+  document ('questions' array + totalQuestions) so both players play identical
+  questions; nextQuestion()/sudden death read from that stored list — no
+  per-question fetch. Each stored question map is
+  { id, difficulty, translations: {en: {...}, fr: {...}}, answerOrder: [int] }.
   When room.status == 'finished' (any path: normal end, quit, disconnect), each
   device calls markSeenAll with the shown IDs read from the room doc
+
+### Friend mode bilingual answer system (canonical index)
+- Answers are identified everywhere by CANONICAL INDEX:
+  0 = correct_answer, 1..3 = incorrect_answers[0..2] — language-independent
+- answerOrder (shuffled once by the host per question) is the shared display
+  order of canonical indices, so both devices show the same button layout;
+  each device renders the text at each position from its OWN language map
+  (FriendQuestion.questionFor/answerPoolFor/answersFor(language))
+- Each player picks their own language in the lobby ("MY LANGUAGE" pills below
+  the player cards; each player sees only their own selector); stored as
+  hostLanguage / guestLanguage on the room doc (RoomData.languageFor(uid));
+  initialized from preferred_question_language on create/join, updated via
+  RoomService.setLanguage()
+- submitAnswer() takes answerIndex (null = timeout); correctness is simply
+  answerIndex == 0 — no text comparison
+- buzzerWrongIndex (int, canonical) replaces the old buzzerWrongAnswer text
+  field; the inheritor's device shows the crossed answer at that index in its
+  own language
 - HOT badge: widgets/hot_badge.dart — SVG flame (assets/icons/hot_now_badge.svg,
   "HOT NOW"), overlaid ON the top-right corner of category cards/chips where
   isHot == true: parent Stack uses clipBehavior: Clip.none + negative Positioned
@@ -506,6 +575,7 @@ lib/
     ├── display_name_service.dart ← displayName claim/release/availability/cooldown
     ├── question_service.dart     ← Firestore question/category fetching, seen tracking,
     │                                local JSON fallback (see Question Architecture)
+    ├── remote_config_service.dart ← Firebase Remote Config wrapper (version gating)
     ├── room_service.dart         ← friend mode room lifecycle + game logic
     ├── sound_service.dart        ← audioplayers wrapper; SFX + background music
     └── preferences_service.dart  ← shared_preferences wrapper; sounds/music/haptics
@@ -625,19 +695,22 @@ widgets/ also includes hot_badge.dart (HOT 🔥 pill for isHot categories)
   Document: {roomId}  (e.g. BLAZIQ-4829)
     - hostUid / hostName / hostAvatar / hostLevel / hostScore / hostCorrect / hostReady / hostConnected
     - guestUid / guestName / guestAvatar / guestLevel / guestScore / guestCorrect / guestReady / guestConnected
-    - category: 'science' | 'geography' | 'history' | 'general_knowledge'
+    - category: string (any enabled Firestore category id)
+    - hostLanguage / guestLanguage: 'en' | 'fr' (each player's question language)
     - status: 'waiting' | 'lobby' | 'countdown' | 'playing' | 'finished'
     - currentQuestionIndex: number
-    - currentQuestion: { id, difficulty, question, correctAnswer, shuffledAnswers[] }
+    - currentQuestion: { id, difficulty, translations: {en: {question,
+      correct_answer, incorrect_answers[]}, fr: {...}}, answerOrder: int[] }
     - phase: 'buzzer' | 'answering' | 'inherited' | 'transition' | 'sudden_death' | 'finished'
     - buzzerWinner: uid | null
-    - buzzerWrongAnswer: string | null
+    - buzzerWrongIndex: int | null (canonical answer index of the wrong answer)
     - winnerId: uid | null
     - quitUid: uid | null  (set when a player confirms quit mid-game; cleared on resetForRematch)
     - hostGamesWon / guestGamesWon: number (cumulative session wins)
     - hostTotalScore / guestTotalScore: number (cumulative session scores)
-    - questions: array of 15 question maps (full session, fetched by host via
-      QuestionService and stored so both players play identical questions)
+    - questions: array of 15 bilingual question maps (full session, fetched by
+      host via QuestionService and stored so both players play identical
+      questions; same shape as currentQuestion)
     - totalQuestions: 15 (length of the stored session list)
     - createdAt: timestamp
 

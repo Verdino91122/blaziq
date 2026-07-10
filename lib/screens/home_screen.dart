@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
 import '../services/question_service.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
@@ -51,13 +52,14 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) => _SoloCategorySheet(
-        onSelected: (category) {
+        onSelected: (category, language) {
           Navigator.pop(sheetContext);
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => SoloGameScreen(
                 categoryId: category.id,
+                language: language,
                 cheatMode: _cheatMode,
               ),
             ),
@@ -515,7 +517,7 @@ class _GridPainter extends CustomPainter {
 // ── Solo category picker sheet ────────────────────────────────────────────────
 
 class _SoloCategorySheet extends StatefulWidget {
-  final ValueChanged<QuizCategory> onSelected;
+  final void Function(QuizCategory category, String language) onSelected;
 
   const _SoloCategorySheet({required this.onSelected});
 
@@ -525,11 +527,20 @@ class _SoloCategorySheet extends StatefulWidget {
 
 class _SoloCategorySheetState extends State<_SoloCategorySheet> {
   late Future<List<QuizCategory>> _categoriesFuture;
+  String _language = 'en';
 
   @override
   void initState() {
     super.initState();
     _categoriesFuture = QuestionService.getCategories();
+    PreferencesService.getQuestionLanguage().then((lang) {
+      if (mounted) setState(() => _language = lang);
+    });
+  }
+
+  void _setLanguage(String language) {
+    setState(() => _language = language);
+    PreferencesService.setQuestionLanguage(language);
   }
 
   void _retry() {
@@ -550,6 +561,29 @@ class _SoloCategorySheetState extends State<_SoloCategorySheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              'Choose Question Language',
+              textAlign: TextAlign.center,
+              style: AppTheme.sectionHeader,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _LanguagePill(
+                  label: 'English 🇬🇧',
+                  selected: _language == 'en',
+                  onTap: () => _setLanguage('en'),
+                ),
+                const SizedBox(width: 10),
+                _LanguagePill(
+                  label: 'French 🇫🇷',
+                  selected: _language == 'fr',
+                  onTap: () => _setLanguage('fr'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
             Text(
               'SELECT CATEGORY',
               textAlign: TextAlign.center,
@@ -625,7 +659,7 @@ class _SoloCategorySheetState extends State<_SoloCategorySheet> {
                       for (final category in categories)
                         _SoloCategoryCard(
                           category: category,
-                          onTap: () => widget.onSelected(category),
+                          onTap: () => widget.onSelected(category, _language),
                         ),
                     ],
                   );
@@ -633,6 +667,46 @@ class _SoloCategorySheetState extends State<_SoloCategorySheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LanguagePill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LanguagePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.electricBlue.withAlpha(15)
+              : AppTheme.softGrey,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppTheme.electricBlue : AppTheme.deepGrey,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTheme.rowLabel.copyWith(
+            color: selected ? AppTheme.electricBlue : AppTheme.ink,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

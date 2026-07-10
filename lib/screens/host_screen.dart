@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
 import '../services/question_service.dart';
 import '../services/room_service.dart';
 import '../services/user_service.dart';
@@ -54,6 +55,7 @@ class _HostScreenState extends State<HostScreen> {
         host: user,
         hostData: userData ?? {},
         category: _category!,
+        language: await PreferencesService.getQuestionLanguage(),
       );
       if (!mounted) return;
       Navigator.pushReplacement(

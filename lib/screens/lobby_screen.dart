@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
 import '../services/question_service.dart';
 import '../services/room_service.dart';
 import '../services/user_service.dart';
@@ -201,6 +202,22 @@ class _LobbyScreenState extends State<LobbyScreen>
       await RoomService.leaveRoom(widget.roomId, widget.myUid);
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     }
+  }
+
+  /// Optimistic local override so the pill flips instantly on tap; the room
+  /// stream is the source of truth once the write lands.
+  String? _localLanguage;
+
+  String _myLanguage(RoomData? room) {
+    if (_localLanguage != null) return _localLanguage!;
+    if (room == null) return 'en';
+    return room.languageFor(widget.myUid);
+  }
+
+  void _setMyLanguage(String language) {
+    setState(() => _localLanguage = language);
+    PreferencesService.setQuestionLanguage(language); // remember for next time
+    RoomService.setLanguage(widget.roomId, widget.myUid, language);
   }
 
   Widget _buildCategoryChip(QuizCategory category) {
@@ -473,6 +490,33 @@ class _LobbyScreenState extends State<LobbyScreen>
                 ),
               ],
             ),
+          ),
+        ),
+
+        // My Language — each player picks their own question language;
+        // only the current player's selector is shown.
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text('MY LANGUAGE', style: AppTheme.sectionHeader),
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: [
+              _LanguagePill(
+                label: 'English 🇬🇧',
+                selected: _myLanguage(room) == 'en',
+                onTap: () => _setMyLanguage('en'),
+              ),
+              const SizedBox(width: 10),
+              _LanguagePill(
+                label: 'French 🇫🇷',
+                selected: _myLanguage(room) == 'fr',
+                onTap: () => _setMyLanguage('fr'),
+              ),
+            ],
           ),
         ),
 
@@ -895,6 +939,46 @@ class _SessionStatCol extends StatelessWidget {
           style: AppTheme.caption.copyWith(color: AppTheme.steel),
         ),
       ],
+    );
+  }
+}
+
+class _LanguagePill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LanguagePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.electricBlue.withAlpha(15)
+              : AppTheme.softGrey,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppTheme.electricBlue : AppTheme.deepGrey,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTheme.rowLabel.copyWith(
+            color: selected ? AppTheme.electricBlue : AppTheme.ink,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }
