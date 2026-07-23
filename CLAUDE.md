@@ -1,38 +1,33 @@
 # Blaziq — Project Brief
 
-## What this app is
+## Overview
 A cross-platform trivia game built with Flutter and Firebase.
-App name: Blaziq
-Package name: com.blaziq.blaziq
-Target platforms: iOS and Android (primary), Web (secondary)
+- App name: Blaziq
+- Package name: com.blaziq.blaziq
+- Target platforms: iOS and Android (primary), Web (secondary)
 
-## Tech stack
+## Tech Stack
 - Flutter (Dart)
-- Firebase Auth (Anonymous on first launch + Google Sign-In for account linking)
-- Firebase Firestore (database + leaderboard + user profiles)
-- Questions: Firestore (questions/{categoryId}/items) via QuestionService —
-  pre-generated AI trivia, bilingual (en/fr language maps per question);
-  local JSON assets in assets/data/ kept as offline fallback only, English
-  only (Open Trivia DB API no longer used)
-- http package for API calls (country detection; handles both mobile and web)
-- google_fonts ^8.0.0 for Fira Sans (w400–w800; all screens)
-- auto_size_text ^3.0.0 for question card and answer buttons in solo game
-- flutter_native_splash ^2.4.1 for native splash screen (runtime dep)
-- flutter_launcher_icons ^0.14.1 for app icon generation (dev dep)
-- audioplayers ^6.0.0 for sound effects and background music
-- shared_preferences ^2.3.0 for persisting settings (sounds, music, haptics)
-- flutter_svg ^2.0.0 for SVG icon rendering (google.svg, guest.svg in assets/icons/)
-- lottie ^3.3.3 for animated background (assets/animations/background.json on all main screens and onboarding)
-- package_info_plus ^8.0.0 for reading app version at runtime (used in AboutScreen); wrapped in try/catch with '1.0.0' fallback (PackageInfo can throw on Chrome debug)
-- url_launcher ^6.3.0 for opening mailto: and https:// links (used in AboutScreen); AndroidManifest queries added for https + mailto schemes; use LaunchMode.platformDefault (not externalApplication) + skip canLaunchUrl (returns false for mailto: on Chrome); Rate App uses LaunchMode.externalApplication to open Play Store
-- share_plus ^10.0.0 for native share sheet (Share.share()); used in Settings → Share App
-- firebase_remote_config ^5.0.0 for feature gating (minimum version checks);
-  see "Remote Config version gating" section
-- State management: Provider or simple StatefulWidget — nothing heavier
+- Firebase Auth — Anonymous on first launch + Google Sign-In for account linking
+- Cloud Firestore — database, leaderboard, user profiles, questions
+- firebase_remote_config ^5.0.0 — feature gating (minimum version checks); see Remote Config section
+- http — API calls (country detection; works on mobile and web)
+- google_fonts ^8.0.0 — Fira Sans, weights w400–w800, used app-wide
+- auto_size_text ^3.0.0 — question card and answer buttons in solo game
+- flutter_native_splash ^2.4.1 — native splash screen (runtime dep)
+- flutter_launcher_icons ^0.14.1 — app icon generation (dev dep)
+- audioplayers ^6.0.0 — sound effects and background music
+- shared_preferences ^2.3.0 — persisted settings (audio/haptics toggles, seen questions, language preference)
+- flutter_svg ^2.0.0 — SVG icon rendering (assets/icons/)
+- lottie ^3.3.3 — animated background (assets/animations/background.json)
+- package_info_plus ^8.0.0 — app version at runtime (About screen); wrapped in try/catch with '1.0.0' fallback since PackageInfo can throw on Chrome debug
+- url_launcher ^6.3.0 — mailto:/https:// links; use LaunchMode.platformDefault (not externalApplication) and skip canLaunchUrl for mailto (returns false on Chrome); Rate App uses LaunchMode.externalApplication to open the Play Store
+- share_plus ^10.0.0 — native share sheet (Settings → Share App)
+- State management: Provider or plain StatefulWidget — nothing heavier
 
 ## Design System
 
-### Color Palette (light theme — implemented in AppTheme)
+### Color Palette (light theme — AppTheme)
 | Token            | Hex       | Usage                                          |
 |------------------|-----------|------------------------------------------------|
 | cloudWhite       | #F8F9FF   | App background (all screens)                   |
@@ -44,11 +39,6 @@ Target platforms: iOS and Android (primary), Web (secondary)
 | softOrange       | #FFEDD5   | Orange tint background (streak pill bg)        |
 | ink              | #1E1B4B   | Primary text                                   |
 | steel            | #6B7280   | Muted/secondary text, icons                    |
-
-Backward-compatible AppTheme aliases (screens may use these):
-- `arenaBlack` = cloudWhite · `cardSurface` = softGrey · `voidBlack` = ink
-- `blazeGold` = electricBlue · `sparkPink` = blazeOrange · `whiteText` = ink
-- `mutedText` = steel · `divider` = deepGrey · `headerBar` = cloudWhite
 
 Difficulty colors: easy = electricBlue · medium = #7C3AED (violet) · hard = blazeOrange
 Mode card gradient: white → #F0F4FF (light blue tint)
@@ -74,32 +64,15 @@ Google brand colors and leaderboard avatar palette are unchanged.
 | streakText       | 15sp | w700   | Streak pill (blazeOrange)                     |
 | difficultyBadge  | 13sp | w700   | Difficulty pill label                         |
 
-Corner radius: 12–16px rounded cards (16px question card, 14–16px buttons, 20px mode cards)
-Status bar icons: dark (Brightness.dark) — app has light background
-Android system navigation buttons: dark icons, enforced at three layers —
-kSystemOverlayStyle const in main.dart (one-shot SystemChrome call + an
-AnnotatedRegion in MaterialApp.builder re-asserting it every frame) and
-android:windowLightNavigationBar=true on NormalTheme in styles.xml
-(values-v27 / values-night-v27 / values-v31 / values-night-v31; night stays
-light-nav because the app is light-themed regardless of system dark mode)
-Navigation bar: floating 5-circle pill, white fill, purple drop shadow; electricBlue 44px circle behind selected icon; icons white (selected) / black (unselected); 250ms easeInOut fade
+Corner radius: 12–16px rounded cards (16px question card, 14–16px buttons, 20px mode cards).
+Status bar icons: dark (Brightness.dark) — app has a light background.
+Android system navigation buttons must stay dark-icon; this is enforced at three layers (kSystemOverlayStyle in main.dart, an AnnotatedRegion re-asserting it every frame, and windowLightNavigationBar=true in styles.xml for v27/v31 light and dark) — update all three together if theming changes.
 
 ## Brand Identity
 - App name: Blaziq
 - Logo mark: lightning bolt with IQ dot accent
 - Tagline: TRIVIA · BATTLE · WIN
 - Tone: competitive sport, not classroom — fast, clean, light premium theme
-
-## Design References
-All screen mockups are in the /designs folder:
-- designs/home_screen.png — Home screen with carousel and header stats
-- designs/profile_screen.png — Profile / sign-in screen
-- designs/rank_screen.png — Leaderboard screen
-- designs/store_screen.png — Store/shop screen
-- designs/menu_screen.png — Settings/menu screen
-
-Always refer to these images when building or modifying each screen.
-Note: the /designs images reflect the original dark-theme mockups; the live app now uses the light theme described above.
 
 ## App Structure
 5 bottom navigation tabs (left to right):
@@ -109,662 +82,260 @@ Note: the /designs images reflect the original dark-theme mockups; the live app 
 4. Shop
 5. Settings
 
-Bottom nav bar: floating 262×54px pill of 5 merged circles (54px diameter, 2px overlap), white fill.
-Drop shadow: BoxShadow(color: Color(0x4D4841C1), blurRadius: 8.6, offset: Offset(0,0)).
-Positioned: centered horizontally, sits above system nav area (MediaQuery.padding.bottom gap below it).
-Selected tab: 44×44px electricBlue circle (#2563EB) behind a white icon (20px).
-Unselected tab: black icon (20px), no circle. Fade animation 250ms easeInOut on selection change.
-No labels. Implementation: CustomPainter (_NavShapePainter) + AnimatedOpacity in lib/main.dart.
+Nav bar: floating 262×54px pill of 5 merged 54px circles, white fill, purple drop shadow (`0x4D4841C1`, blur 8.6), centered above the system nav inset. Selected tab: 44×44px electricBlue circle behind a white 20px icon. Unselected: black 20px icon, no circle, no labels. 250ms easeInOut fade on selection change.
 
-## Screen Details
+## Screens
 
-### Home Screen
-- Header bar: user avatar (circle, top left, electricBlue border), coins count with star icon,
-  XP progress bar with level number and title — all live from Firestore
-- Center: Blaziq logo (assets/images/inapp_logo.png, 80×80) + "SELECT A MODE" text
-- Developer cheat mode: activated by tapping the logo 7 times within 3 seconds;
-  counter resets if no tap within 3 seconds; DEV MODE label appears below SELECT A MODE
-- Swipeable horizontal carousel with 3 mode cards (gradient: white → #F0F4FF):
-  1. Solo — play alone vs the clock (fully functional)
-  2. Play with Friend — diagonal blazeOrange "COMING SOON" ribbon, non-tappable
-  3. Play Online — diagonal blazeOrange "COMING SOON" ribbon, non-tappable
-- Each card has icon, title, short description, centered content
-- Grid texture overlay on mode cards: subtle deepGrey lines
+### Home
+- Header bar: user avatar (electricBlue border), coins (star icon), XP progress bar with level number and title — all live from Firestore
+- Center: Blaziq logo (80×80) + "SELECT A MODE"
+- Developer cheat mode: tap the logo 7 times within 3 seconds → "DEV MODE" label appears and 5 cheat buttons become available in the solo game screen
+- Swipeable carousel with 3 mode cards: Solo (functional) · Play with Friend (functional) · Play Online (COMING SOON ribbon, non-tappable)
 
-### Solo Mode Game Screen (not in nav bar)
-- Entry: tapping the Solo card opens a bottom sheet with a "Choose Question
-  Language" step (English 🇬🇧 / French 🇫🇷 pills, default English, persisted to
-  shared_preferences key preferred_question_language) followed by the category
-  grid (categories live from Firestore via QuestionService.getCategories(),
-  HOT badge on isHot categories); picking one launches
-  SoloGameScreen(categoryId: ..., language: ...)
-- Background: cloudWhite full screen
-- Top bar: white background, X quit button left, difficulty pill center
-  (small colored dot + difficulty label in ink, softGrey pill bg), score right
-  (softGrey pill, orange star icon + blazeOrange score text). No elevation.
-- Endless time-based mode — no fixed question limit
-- Timer: 90×90px circular arc inside a 110×110px white card with soft shadow.
-  Track color: deepGrey. Arc color: electricBlue (normal), blazeOrange (≤8s).
-  Center number: ink color, Fira Sans w800.
-- Pre-game countdown overlay: 3, 2, 1, GO! on cloudWhite background
-  - Shows a muted steel 'CANCEL' button below the number (hidden on GO!)
-  - Tapping CANCEL returns to home screen immediately
-  - Android back button is blocked during countdown (PopScope canPop: false)
-- Quit button: X icon top left — tapping shows a confirmation dialog;
-  timer keeps running while dialog is open (do NOT pause it);
-  dialog: 'Quit Game?' / 'Your progress will be lost' /
-  electricBlue 'Keep Playing' button + steel muted 'Quit' button
-- Android back button during game: triggers the same quit confirmation dialog
-- Correct answer time bonus (streak resets to 0 on wrong answer):
-  - Streak 1–2: +4s
-  - Streak 3: +6s
-  - Streak 4: +8s
-  - Streak 5+: +10s
-- Wrong answer: -3s, streak resets to 0 (next correct is back to +4s)
-- Difficulty progression: sessions come pre-ordered easy → medium → hard from
-  QuestionService; the difficulty pill follows the current question's own
-  difficulty field (correct-count escalation removed with the Firestore switch)
-- Floating feedback: '+4s'/'+6s'/'+8s'/'+10s' in electricBlue, '-3s' in blazeOrange.
-  Text flies upward with scale pop + fade, then timer bumps (scale + color flash).
-- Streak indicator: softOrange pill, blazeOrange text "🔥 x3", Fira Sans 15sp w700.
-  Floats as Stack/Positioned overlay between timer and question card.
-  Bouncing animation: TweenSequence scales 1.0 → 1.15 → 1.0 every 1.25s.
-  Appears at streak 2+; disappears on wrong answer.
-- Question card: white background, border-radius 16px, soft shadow.
-  Expanded (fills remaining vertical space). AutoSizeText, 13–19sp, max 5 lines.
-- Answer buttons: 2×2 GridView.count, asymmetric corner radii per position:
-  - Top-left: topLeft=16px   Top-right: topRight=16px
-  - Bottom-left: bottomLeft=16px   Bottom-right: bottomRight=16px
-  Idle: white bg, deepGrey border. Correct: skyBlue bg, electricBlue border/text.
-  Wrong: softOrange bg, blazeOrange border/text.
-  Tap animation: AnimatedScale 0.97 on press, 120ms ease.
-  AutoSizeText, 11–15sp, max 2 lines.
-- Scoring formula at game end:
-  - base_points = correct_answers × 100
-  - streak_bonus = highest_streak × 50
-  - time_bonus = remaining_seconds × 10
-  - final_score = base_points + streak_bonus + time_bonus
-- Results screen: headline based on performance, final score, correct count,
-  highest streak, accuracy %, score/coins/XP earned with count-up animations,
-  XP progress bar, LEVEL UP! badge if threshold crossed
-- Questions: QuestionService.getSessionQuestions(categoryId) fetches 15-question
-  sessions from Firestore (7 easy + 5 medium + 3 hard, shuffled within each
-  difficulty group); auto-prefetch of the next session when <3 remain, excluding
-  on-screen question IDs to avoid duplicates
-- Each question is marked seen (QuestionService.markSeen) when answered, or at
-  game over if the timer runs out with an unanswered question on screen
-- HTML entities decoded centrally inside QuestionService
+### Solo Mode
+- Entry: Solo card → bottom sheet with a language step (English/French, default English, persisted as `preferred_question_language`) → category grid (Firestore categories, HOT badge on `isHot`) → `SoloGameScreen(categoryId, language)`
+- Endless time-based mode, starts at 30s, no fixed question count
+- Correct answer time bonus, streak resets to 0 on any wrong answer: streak 1–2 → +4s · streak 3 → +6s · streak 4 → +8s · streak 5+ → +10s
+- Wrong answer: −3s, streak resets to 0
+- Difficulty pill follows the current question's own `difficulty` field; sessions arrive pre-ordered easy → medium → hard
+- Quit (X button or Android back) shows a confirmation dialog; the timer keeps running while it's open
+- Pre-game countdown (3, 2, 1, GO!) with a CANCEL button; Android back is blocked during it
+- Scoring: see Scoring & Rewards
+- Questions: 15-question sessions from QuestionService, auto-prefetched when fewer than 3 remain; see Question Architecture
 
 #### Sound effects (SoundService)
-- Background music starts when countdown ends, loops at volume 0.4
-- correct.wav on correct answer
-- wrong.mp3 on wrong answer
-- gameover.wav on game over
-- At 8 seconds remaining: background music stops, tictoc.wav loops
-- Streak bonus pushing time back above 8s: tic-toc stops, background music resumes
-- SFX players use AndroidAudioFocus.none so they never interrupt background music
-- All sounds respect the sounds_enabled / music_enabled preferences
+- Background music loops at volume 0.4 once the countdown ends
+- correct.wav / wrong.mp3 / gameover.wav on the relevant events
+- At 8s remaining: background music stops, tictoc.wav loops; a streak bonus pushing time back above 8s resumes background music
+- SFX players use `AndroidAudioFocus.none` so they never interrupt background music
+- Respects `sounds_enabled` / `music_enabled` preferences
 
-#### Haptics (HapticFeedback — no package needed)
-- Correct answer: lightImpact
-- Streak milestone (3rd or 5th in a row): mediumImpact
-- Wrong answer: heavyImpact
-- Timer ≤ 8 seconds: selectionClick once per second
-- _hapticsEnabled cached at game start — checked synchronously (no async delay)
-- Requires VIBRATE permission in AndroidManifest.xml
+#### Haptics
+- Correct: lightImpact · streak milestone (3rd/5th in a row): mediumImpact · wrong: heavyImpact · timer ≤8s: selectionClick once per second
+- Requires VIBRATE permission (AndroidManifest.xml); respects `haptics_enabled`
 
-### Profile Screen
-- Background: cloudWhite (flat, no gradient)
-- The app always has a signed-in user (anonymous or Google) — a pure signed-out
-  state never appears
-- If anonymous (guest):
-  - electricBlue "SAVE YOUR PROGRESS" banner at top (lock icon + subtitle)
-  - Guest avatar (person icon, steel muted ring)
-  - Guest_XXXXXX username + "Guest account" subtitle read from Firestore
-  - Stats grid: games played, best score, coins, XP level — live from Firestore
-  - Google Sign-In button (white bg + deepGrey border — visible on light theme)
-  - "Reward: +200 coins for linking!" note
-- If signed in with Google:
-  - Google profile photo avatar (electricBlue ring), username, email — live from Firestore
-  - Stats grid: games played, best score, coins, XP level
-  - Sign out button (blazeOrange tint) — shows confirmation dialog before signing out;
-    on confirm, signs out and immediately re-enters anonymous auth
+### Profile
+- The app always has a signed-in user (anonymous or Google) — a pure signed-out state never appears
+- Guest: "SAVE YOUR PROGRESS" banner, `Guest_XXXXXX` name, stats grid (games played, best score, coins, XP level), Google Sign-In button (+200 coins reward on linking)
+- Google: profile photo, username, email, stats grid, Sign Out (confirmation dialog; re-enters anonymous auth on confirm)
 
-### Rank Screen
-- Background: cloudWhite
-- Title: "LEADERBOARD"
-- 3 filter tabs: Worldwide | Canada | Friends (softGrey pill container, electricBlue active)
-- Worldwide: all players ordered by score desc (live from Firestore leaderboard collection)
-- Canada: client-side filter where country == 'CA'; shows empty state if none
-- Friends: "Coming Soon" placeholder
-- Top 3 as podium: 2nd left, 1st center (taller card), 3rd right
-  If fewer than 3 players exist, render only those that exist (no empty slots)
-  Each podium card: avatar (NetworkImage if avatarUrl set, else initials), name, score, rank badge
-- Players 4th+ as scrollable list below; each row: rank, avatar, username, score
-- Current user's row highlighted: electricBlue border + subtle tint (both podium and list)
-- leaderboard collection updated by saveGameResult() using effectiveBest = max(score, currentBest)
-- leaderboardStream() capped at top 50 (.limit(50)); getUserRank(uid, score) uses Firestore count aggregation for rank outside top 50
-- Sticky "Your Rank" card: fixed above nav bar on Worldwide tab when current user is outside top 50; electricBlue border + skyBlue bg; disappears when user enters top 50
-- When online mode is added later, leaderboard will switch to online ratings
+### Rank (Leaderboard)
+- 3 filter tabs: Worldwide (all players, score desc) · Canada (client-side filter on `country == 'CA'`) · Friends (Coming Soon)
+- Top 3 as a podium (2nd left, 1st center taller, 3rd right; only render players that exist), 4th+ as a scrollable list
+- Current user's row is highlighted (electricBlue border + tint) in both podium and list
+- Backed by the `leaderboard` collection, written by `saveGameResult()` using `effectiveBest = max(score, currentBest)`
+- `leaderboardStream()` is capped at top 50; `getUserRank()` uses a Firestore count aggregation for rank outside the top 50, shown as a sticky "Your Rank" card
 
-### Store Screen
-- Background: cloudWhite
-- Title: "SHOP"
-- Header: softGrey coin balance pill (star icon + amount), live from Firestore via userStream
-- Center: inapp_logo.png + "COMING SOON" in electricBlue + muted subtitle
-- Bundle cards and purchase buttons removed — placeholder until Phase 9
+### Store
+- Coming Soon placeholder; live coin balance shown via `userStream`; full store deferred to Phase 9
 
-### Menu/Settings Screen
-- Background: cloudWhite
-- Title: "SETTINGS"
-- Section AUDIO & HAPTICS:
-  - Sound Effects toggle — persisted via shared_preferences (sounds_enabled)
-  - Background Music toggle — persisted via shared_preferences (music_enabled)
-  - Haptics toggle — persisted via shared_preferences (haptics_enabled)
-  - All toggles load saved state on screen init; default true
-  - Toggle colors driven by SwitchThemeData in AppTheme.theme (electricBlue active)
-- Section NOTIFICATIONS:
-  - Push Notifications toggle (UI only, not yet wired)
-  - In-App Notifications toggle (UI only, not yet wired)
-- Section ACCOUNT:
-  - Edit Profile — navigates to Profile tab (index 0) via MainShell callback
-  - Sign Out — confirmation dialog, only functional when signed in with Google;
-    guests see a SnackBar: "You are playing as a guest — no account to sign out of"
-  - Delete Account — red icon + label (#DC2626), same card style as other rows;
-    available to ALL users (Google and guest); confirmation dialog warns data is permanent;
-    calls AuthService.deleteAccount() → UserService.deleteAccountData(uid):
-      batch deletes users/{uid} + leaderboard/{uid} + queries displayNames where uid==uid
-      and deletes ALL matching docs (current name + any old reserved names from past changes)
-      → attempts user.delete() Firebase Auth; if that fails (e.g. requires-recent-login)
-      signs out instead with no error shown → re-enters anonymous auth → onSignOut navigates
-      to WelcomeScreen. All data is always gone; an empty Auth record may occasionally remain
-      as a dataless orphan — harmless.
-    Firestore rules: displayNames allows delete when request.auth.uid == resource.data.uid.
-- Section SUPPORT & INFORMATION:
-  - How To Play — opens HowToPlayScreen as a full-screen modal (showGeneralDialog, fade+scale entrance)
-  - About — opens AboutScreen as a full-screen modal (showGeneralDialog, fade+scale entrance); uses package_info_plus for version + url_launcher for email/legal links
-  - Rate App — opens Play Store listing via url_launcher (LaunchMode.externalApplication):
-      https://play.google.com/store/apps/details?id=com.blaziq.blaziq
-  - Share App — opens native share sheet via share_plus ^10.0.0 (Share.share());
-      message: "Check out Blaziq — a fast-paced trivia game where you race against the clock! 🧠⚡\n\n[Play Store URL]"
-
-## Leaderboard Strategy
-- Phase 3-5: Leaderboard shows solo mode best scores only
-- Phase 6+: Leaderboard will show online match ratings
-- Worldwide tab: all players globally
-- Canada tab: players filtered by country field in Firestore
-- Friends tab: players the user follows (Phase 6+)
-
-## Display Name System (Phase 6.5)
-- `displayName` is the canonical public identity field going forward
-- `username` is frozen legacy — never overwrite it, never delete it
-- First launch: `_AppRouter` checks `users/{uid}.displayName`; routes to `WelcomeScreen` (anon) or `NamePickerScreen` (Google) if empty
-- `WelcomeScreen`: shown only to anonymous users; logo + title + tagline; two SVG-icon buttons (google.svg / guest.svg, Fira Sans 15sp w700, ink, white bg, 14px radius, electricBlue border for Google / deepGrey for Guest, subtitle text below each label); "Continue with Google" → Google sign-in then NamePickerScreen (or MainShell if name already set); "Continue as Guest" → modal bottom sheet (_GuestPickerSheet) with full name picker, X dismiss button, isDismissible: false
-- `NamePickerScreen`: mandatory (no back/dismiss); 3–20 chars, `^[a-zA-Z0-9_]+$`; real-time availability check (600ms debounce); suggestion chips on conflict; navigates to `MainShell` on success
-- `DisplayNameService.claimName()`: Firestore transaction — writes `displayNames/{lowercase}` + `users/{uid}.displayName` atomically
-- `DisplayNameService.releaseName()`: marks old name `reserved: true` (not deleted, stays blocked)
-- 7-day cooldown enforced via `users/{uid}.lastNameChange`; `canChangeName()` / `daysUntilCanChange()` helpers
-- Profile screen edit icon next to name → `_ChangeNameSheet` bottom sheet (calls `releaseName` then `claimName`)
-- Everywhere that writes to leaderboard uses `displayName` field (not `username`)
-- `UserService.syncLeaderboardDisplayName(uid, name)` syncs leaderboard after any name change
-- Leaderboard reads: `displayName` first, fall back to `username` for legacy docs
-
-### Firestore Security
-Rules are live in `firestore.rules` and deployed to blaziq-1822.
-```
-match /displayNames/{name} {
-  allow read: if true;
-  allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-  allow update: if request.auth != null && resource.data.uid == request.auth.uid;
-  allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
-}
-```
+### Settings
+- AUDIO & HAPTICS: Sound Effects / Background Music / Haptics toggles, persisted via shared_preferences, default true
+- NOTIFICATIONS: Push / In-App toggles — UI only, not yet wired
+- ACCOUNT:
+  - Edit Profile → Profile tab
+  - Sign Out — Google users get a confirmation dialog; guests get a SnackBar explaining there's no account to sign out of
+  - Delete Account — available to all users; confirmation dialog warns data is permanent. `AuthService.deleteAccount()` → `UserService.deleteAccountData(uid)` batch-deletes `users/{uid}`, `leaderboard/{uid}`, and all `displayNames` docs for that uid, then attempts `user.delete()`; if that fails (e.g. requires-recent-login) it signs out instead with no error shown and re-enters anonymous auth. An empty Auth record may occasionally remain as a harmless dataless orphan.
+- SUPPORT & INFORMATION: How To Play and About open as full-screen modals · Rate App opens the Play Store listing · Share App opens the native share sheet
 
 ## Firebase Structure (Firestore)
-Collection: users
-  Document: {uid}
-    - username: string (legacy — frozen, never overwrite)
-    - displayName: string (canonical public name — always use this going forward)
-    - lastNameChange: timestamp | null (7-day cooldown for name changes)
-    - email: string
-    - coins: number (default 200 on first sign-in)
-    - jokers: number (default 0)
-    - xp: number (default 0)
-    - level: number (default 1)
-    - gamesPlayed: number
-    - bestScore: number (solo mode best score)
-    - country: string (ISO 3166-1 alpha-2, detected via ip-api.com on first write)
-    - lastPlayedDate: string (yyyy-MM-dd, for daily bonus)
-    - createdAt: timestamp
 
-Collection: displayNames
-  Document: {lowercaseName}
-    - uid: string
-    - displayName: string (original casing)
-    - reserved: bool (false = active, true = old name no longer in use but blocked)
-    - createdAt: timestamp
+```
+users/{uid}
+  username: string            — legacy, frozen, never overwrite
+  displayName: string         — canonical public name, always use this
+  lastNameChange: timestamp | null
+  email: string
+  coins: number                — default 200 on first sign-in
+  jokers: number                — default 0
+  xp: number · level: number    — defaults 0 / 1
+  gamesPlayed: number · bestScore: number
+  country: string              — ISO 3166-1 alpha-2, via ip-api.com
+  lastPlayedDate: string        — yyyy-MM-dd, for daily coin bonus
+  createdAt: timestamp
 
-Collection: leaderboard
-  Document: {uid}
-    - displayName: string (canonical — falls back to username for legacy docs on read)
-    - score: number (solo best score for now, online rating later)
-    - country: string (ISO 3166-1 alpha-2)
-    - avatarUrl: string
-    - updatedAt: timestamp
+displayNames/{lowercaseName}
+  uid: string · displayName: string (original casing)
+  reserved: bool                — true = old name, blocked but not deleted
+  createdAt: timestamp
 
-## Remote Config version gating
-- RemoteConfigService (lib/services/remote_config_service.dart): initialized
-  fire-and-forget in main() right after Firebase.initializeApp (unawaited +
-  internal try/catch — never blocks or crashes startup); 1-hour minimum fetch
-  interval, 10s fetch timeout, in-app default minimum_friend_mode_version = 1
-- FriendModeScreen checks PackageInfo buildNumber (pubspec version +N) against
-  getMinimumFriendModeVersion() on load, BEFORE the nickname check. If below:
-  Host/Join buttons are replaced by an "Update Required" card (system_update
-  icon, message, "Update Now" button → Play Store listing via url_launcher
-  externalApplication). If the build number can't be determined (PackageInfo
-  can throw on Chrome debug), the user is NOT blocked.
-- Server template (blaziq-1822) also holds minimum_solo_mode_version,
-  minimum_online_mode_version, minimum_app_version, app_maintenance_mode,
-  app_maintenance_message — created in console, only friend gating is wired
-  in-app so far. minimum_friend_mode_version is currently 8 (= the bilingual
-  room-structure release; pubspec is 1.0.0+8). Old builds ≤7 see the update
-  prompt instead of failing silently on incompatible room data.
-- To test: set minimum_friend_mode_version to 999 in Firebase Console →
-  Remote Config, relaunch the app (or wait out the 1h fetch interval), open
-  Friend Mode; set back to 8 afterwards.
+leaderboard/{uid}
+  displayName: string           — falls back to username for legacy docs
+  score: number · country: string · avatarUrl: string · updatedAt: timestamp
 
-## Country Detection
-- Country is detected via `http://ip-api.com/json?fields=status,countryCode` on first doc creation
-- Android allows cleartext HTTP to ip-api.com via `android/app/src/main/res/xml/network_security_config.xml`
-- `refreshCountryIfStale(uid)` is called fire-and-forget on app launch:
-  if country == 'CA' AND device locale is not Canada, re-detects and updates Firestore
-  (handles legacy users who got the old hardcoded 'CA' default)
-- Fall back to empty string if detection fails; do not block app launch
+categories/{categoryId}
+  (science, geography, history, general_knowledge, sports, entertainment,
+   technology, nature_animals, world_cup)
+  name: string · emoji: string · isHot: bool · totalQuestions: number
+  enabled: bool · supportedLanguages: string[] (currently ['en','fr'])
 
-## Scoring & Rewards System
+questions/{categoryId}/items/{questionId}   (e.g. science_easy_0001)
+  difficulty: 'easy'|'medium'|'hard' · category: string · createdAt
+  en: { question, correct_answer, incorrect_answers[] }
+  fr: { question, correct_answer, incorrect_answers[] }
+  ⚠️ en/fr incorrect_answers are NOT index-aligned (fr is a shuffled
+  translation) — only correct_answer maps cleanly at index 0.
+
+rooms/{roomId}   (e.g. BLAZIQ-4829, friend mode)
+  hostUid/hostName/hostAvatar/hostLevel/hostScore/hostCorrect/hostReady/hostConnected
+  guestUid/guestName/guestAvatar/guestLevel/guestScore/guestCorrect/guestReady/guestConnected
+  category: string · hostLanguage/guestLanguage: 'en'|'fr'
+  status: 'waiting'|'lobby'|'countdown'|'playing'|'finished'
+  currentQuestionIndex: number
+  currentQuestion: { id, difficulty, translations: {en:{...}, fr:{...}}, answerOrder: int[] }
+  phase: 'buzzer'|'answering'|'inherited'|'transition'|'sudden_death'|'finished'
+  buzzerWinner: uid|null · buzzerWrongIndex: int|null (canonical) · winnerId: uid|null
+  quitUid: uid|null              — cleared on resetForRematch
+  hostGamesWon/guestGamesWon: number · hostTotalScore/guestTotalScore: number
+  questions: array of 15 bilingual question maps (same shape as currentQuestion)
+  totalQuestions: number
+  gameStartedAt/buzzerPressedAt/nextQuestionAt/inheritedDeadlineAt: server timestamps
+    used to keep both devices' phase timers in sync
+  createdAt: timestamp
+```
+
+### Firestore Security Rules (deployed to blaziq-1822)
+- `displayNames/{name}`: read open; create/update/delete require `request.auth.uid` to match the doc's `uid`
+- `questions/{categoryId}/items` and `categories`: read requires `request.auth != null`; writes denied (content is seeded out-of-band)
+
+## Display Name System
+- `displayName` is the canonical public identity field; `username` is frozen legacy — never overwritten or deleted
+- New anonymous users land on `WelcomeScreen` (Google / Guest); Google users without a `displayName` land on `NamePickerScreen` (mandatory, no back/dismiss); Guest users pick a name via a bottom sheet
+- Name rules: 3–20 chars, `^[a-zA-Z0-9_]+$`, real-time availability check with suggestion chips on conflict
+- `DisplayNameService.claimName()` writes `displayNames/{lowercase}` + `users/{uid}.displayName` atomically in a transaction; `releaseName()` marks the old name `reserved: true` instead of deleting it
+- 7-day cooldown on name changes, enforced via `users/{uid}.lastNameChange`; changed from Profile via the edit icon
+- Every leaderboard write uses `displayName`; leaderboard reads fall back to `username` for legacy docs
+
+## Question Architecture
+`QuestionService` (lib/services/question_service.dart) is the sole source of trivia questions — bilingual, Firestore-backed, with a local JSON fallback.
+
+- `getSessionQuestions(categoryId, {language, excludeIds})` builds one 15-question session: 7 easy + 5 medium + 3 hard, shuffled within each tier, ordered easy → medium → hard. `language` ('en' default | 'fr') selects which language map the returned text comes from, falling back to 'en' then to flat legacy fields.
+- Seen tracking: shared_preferences key `seen_{categoryId}` holds answered/timed-out question IDs; `seen_reset_date` auto-clears all seen lists every 60 days. A session excludes seen IDs, topping up with seen ones only if a difficulty tier runs out.
+- `excludeIds` additionally excludes the current on-screen batch and any prefetched batch, so a single match can never repeat a question ID even if the seen-list write hasn't landed yet.
+- `markSeen()` / `markSeenAll()` are called on answer, on timeout, and (friend mode) at game end for every question ID shown in the room document.
+- Fallback: if Firestore is unreachable, loads `assets/data/questions_{category}.json` — English only, only the original 4 categories (science, geography, history, general_knowledge) ship as assets.
+- Friend mode: the host fetches the 15-question session once and stores it in the room doc so both players see identical questions. Answers are matched by canonical index (0 = correct, 1–3 = incorrect, language-independent) rather than text, since the en/fr incorrect-answer arrays aren't index-aligned. Each player can select their own language in the lobby, stored as `hostLanguage`/`guestLanguage`.
+
+Question generation script: C:\Users\user\Documents\blaziq_generator\bin\generate_questions_topup.dart — run from blaziq_generator directory (not bin subfolder).
+
+## Scoring & Rewards
 
 Three separate currencies are awarded at the end of every solo game.
 
-### SCORE (leaderboard only)
+### Solo — SCORE (leaderboard only, stored as `bestScore`)
 ```
 base        = correct_answers × 100
 streak      = highest_streak × 50
 time        = remaining_seconds × 10
 final_score = base + streak + time
 ```
-Score is stored as `bestScore` in Firestore (updated only if higher than stored value).
-It does NOT appear in the home header bar.
+Updated only if higher than the stored value. Does not appear in the home header bar.
 
-### XP (level progression)
+### Solo — XP (level progression)
 ```
 xp_earned = (correct_answers × 10) + 5 + (highest_streak × 3)
 ```
-The flat +5 is the per-game completion reward. XP accumulates in the `xp` field;
-`level` is recalculated on every save using:
-- `xpThreshold(n) = round(100 × n × 1.5)` — cumulative XP to reach level n
-- Level 1 = 0 XP, Level 2 = 300 XP, Level 3 = 450 XP, etc.
+`level` is recalculated on every save via `xpThreshold(n) = round(100 × n × 1.5)` (Level 1 = 0 XP, Level 2 = 300 XP, Level 3 = 450 XP, ...).
+Level titles: 1–4 ROOKIE · 5–9 CHALLENGER · 10–19 EXPERT · 20–49 MASTER · 50+ LEGEND.
 
-Level titles: 1–4 ROOKIE · 5–9 CHALLENGER · 10–19 EXPERT · 20–49 MASTER · 50+ LEGEND
-
-### COINS (store currency)
+### Solo — COINS (store currency)
 ```
 coins_earned = 10 + (correct_answers × 2) + (highest_streak ≥ 5 ? 15 : 0) + (first_game_today ? 20 : 0)
 ```
-`first_game_today` is determined by comparing `lastPlayedDate` to today's date.
+`first_game_today` compares `lastPlayedDate` to today's date. Anonymous users see rewards on the results screen but nothing is saved — they see a sign-in prompt instead.
 
-### Results Screen
-Shows all three rewards with count-up animations. XP section includes an animated
-progress bar showing movement within the current level, plus a "LEVEL UP!" badge if
-a level threshold was crossed. Anonymous users see rewards displayed but nothing is
-saved — they see a sign-in prompt instead.
+### Friend Mode scoring
+- Buzzer winner: correct +3 pts, wrong −1 pt → inherited phase
+- Inheritor: correct +2 pts, wrong/timeout 0 pts → transition phase
+- Sudden death: correct wins the game; wrong hands the win to the other player
+- `XP = correctAnswers × 8 + (winner ? 20 : 0)` · `Coins = correctAnswers × 2 + (winner ? 15 : 0)`
 
-### Home Header Bar
-Shows only: user avatar · coins (live from Firestore) · XP progress bar with level
-number and title. Power-ups and jokers are reserved for a later phase.
+## Remote Config
+`RemoteConfigService` initializes fire-and-forget in `main()` right after `Firebase.initializeApp` (never blocks or crashes startup); 1-hour minimum fetch interval, 10s fetch timeout.
 
-## Kahoot Mode (Phase 8 — planned last)
-A live quiz mode where one user hosts a session and multiple players
-join via a room code and answer simultaneously in real time.
-This is the most complex feature — build after friend and online modes are complete.
+Parameters on the blaziq-1822 template:
+- `minimum_friend_mode_version` — wired. `FriendModeScreen` checks the app's build number against this before the nickname check; if below, Host/Join are replaced by an "Update Required" card linking to the Play Store. If the build number can't be read, the user is not blocked. Currently 8.
+- `minimum_solo_mode_version`, `minimum_online_mode_version`, `minimum_app_version`, `app_maintenance_mode`, `app_maintenance_message` — exist on the template, not yet wired in-app.
 
-## Question Architecture (Firestore — replaces Open Trivia DB + primary JSON)
-
-### Firestore collections (bilingual since Phase 6.75)
-Collection: categories
-  Document: {categoryId}   (science, geography, history, general_knowledge,
-                            sports, entertainment, technology, nature_animals, world_cup)
-    - name: string · emoji: string · isHot: bool · totalQuestions: number · enabled: bool
-    - supportedLanguages: string[] (currently ['en', 'fr'])
-
-Collection: questions
-  Document: {categoryId}
-    Subcollection: items
-      Document: {questionId}  (e.g. science_easy_0001)
-        - difficulty: 'easy' | 'medium' | 'hard' · category: string · createdAt
-        - en: { question, correct_answer, incorrect_answers[] }
-        - fr: { question, correct_answer, incorrect_answers[] }
-        ⚠️ en/fr incorrect_answers arrays are NOT semantically aligned by index
-        (the FR list is a shuffled translation) — cross-language answer display
-        maps by index, so the crossed/selected answer shown to a viewer in the
-        other language can be a different wrong answer. Correct ↔ correct always
-        maps cleanly (index 0). Game fairness is unaffected (always exactly
-        one wrong answer crossed).
-
-Rules (deployed): questions/{categoryId}/items and categories allow read if
-request.auth != null; writes denied (content is seeded out-of-band).
-
-### QuestionService (lib/services/question_service.dart)
-- getSessionQuestions(categoryId, {language, excludeIds}) — one game session:
-  7 easy + 5 medium + 3 hard (15 total), shuffled within each difficulty group,
-  returned easy → medium → hard. `language` ('en' default | 'fr') selects which
-  language map the returned TriviaQuestion text comes from (falls back to 'en',
-  then to flat legacy fields). Excludes locally-seen question IDs; if a
-  difficulty runs out of unseen questions it tops up with seen ones so the game
-  never fails to start. Firestore fetch window per difficulty grows with the
-  seen list (count×4 + seen) so unseen questions stay reachable cheaply.
-- TriviaQuestion carries `raw` — the full bilingual Firestore doc — so friend
-  mode can store both language versions in the room document
-- Fallback: if Firestore fails entirely, loads assets/data/questions_{cat}.json
-  (only the original 4 categories ship as assets — English only, last-resort)
-- Seen tracking (shared_preferences): seen_{categoryId} = list of question IDs
-  (language-agnostic); seen_reset_date = epoch millis — auto-clear after 60 days
-- markSeen(categoryId, id) / markSeenAll(categoryId, ids) — called by game screens
-- getCategories() — categories where enabled == true, isHot first then alphabetical;
-  QuizCategory includes supportedLanguages
-- HTML entities are decoded inside QuestionService (models arrive clean)
-- Language preference: PreferencesService.get/setQuestionLanguage() —
-  shared_preferences key preferred_question_language, default 'en'; written by
-  the solo sheet and the lobby language selector, read as the default everywhere
-
-### How the game modes use it
-- Solo: language + category picker sheet on Home → SoloGameScreen(categoryId,
-  language); session fetch + prefetch in that language; markSeen after each
-  answered question
-- Friend (bilingual): HOST (and lobby category change / rematch) fetches the
-  session on the host's device and stores the full 15-question list in the room
-  document ('questions' array + totalQuestions) so both players play identical
-  questions; nextQuestion()/sudden death read from that stored list — no
-  per-question fetch. Each stored question map is
-  { id, difficulty, translations: {en: {...}, fr: {...}}, answerOrder: [int] }.
-  When room.status == 'finished' (any path: normal end, quit, disconnect), each
-  device calls markSeenAll with the shown IDs read from the room doc
-
-### Friend mode bilingual answer system (canonical index)
-- Answers are identified everywhere by CANONICAL INDEX:
-  0 = correct_answer, 1..3 = incorrect_answers[0..2] — language-independent
-- answerOrder (shuffled once by the host per question) is the shared display
-  order of canonical indices, so both devices show the same button layout;
-  each device renders the text at each position from its OWN language map
-  (FriendQuestion.questionFor/answerPoolFor/answersFor(language))
-- Each player picks their own language in the lobby ("MY LANGUAGE" pills below
-  the player cards; each player sees only their own selector); stored as
-  hostLanguage / guestLanguage on the room doc (RoomData.languageFor(uid));
-  initialized from preferred_question_language on create/join, updated via
-  RoomService.setLanguage()
-- submitAnswer() takes answerIndex (null = timeout); correctness is simply
-  answerIndex == 0 — no text comparison
-- buzzerWrongIndex (int, canonical) replaces the old buzzerWrongAnswer text
-  field; the inheritor's device shows the crossed answer at that index in its
-  own language
-- HOT badge: widgets/hot_badge.dart — SVG flame (assets/icons/hot_now_badge.svg,
-  "HOT NOW"), overlaid ON the top-right corner of category cards/chips where
-  isHot == true: parent Stack uses clipBehavior: Clip.none + negative Positioned
-  offsets; GridViews carry internal top/right padding so the viewport doesn't
-  clip the overflow
+## Country Detection
+- Detected via `http://ip-api.com/json?fields=status,countryCode` on first user-doc write; Android allows cleartext HTTP to that host via `network_security_config.xml`
+- `refreshCountryIfStale(uid)` runs fire-and-forget on launch and re-detects if `country == 'CA'` but the device locale isn't Canada (fixes legacy users who got the old hardcoded default)
+- Falls back to an empty string on failure; never blocks app launch
 
 ## Web Builds (Chrome testing)
-- Use kIsWeb from flutter/foundation.dart to detect web platform
+- Use `kIsWeb` from `flutter/foundation.dart` to detect web platform
 - All features should work on both web and mobile
 
 ## Rules for Claude Code (IMPORTANT)
-- Always read CLAUDE.md and relevant design images before writing any code
+- Always read CLAUDE.md before writing any code
 - Build one feature at a time — never scaffold everything at once
 - Keep code simple and readable — no over-engineering
 - Use Provider or StatefulWidget for state — nothing heavier
 - Always ask before adding any new pub.dev package
 - Never add payment or billing code unless explicitly asked
 - Always handle loading states and errors gracefully
-- Questions come from QuestionService (Firestore) — never re-add Open Trivia DB;
-  HTML entity decoding lives inside QuestionService
+- Questions come from QuestionService (Firestore) only — never re-add Open Trivia DB; HTML entity decoding lives inside QuestionService
 - Never hardcode user data — always check auth state first
 - Always use AppTheme for colors and text styles — never hardcode colors
-- Dispose all AnimationControllers and Timers in dispose()
-- Use if statements not Visibility widgets for conditional rendering
+- Dispose all AnimationControllers and Timers in `dispose()`
+- Use `if` statements, not `Visibility` widgets, for conditional rendering
 - Streak indicator and floating feedback must use Stack/Positioned
-- Haptic AND sound calls must be synchronous — cache preference, never call async inside timer ticks
-  - `_hapticsEnabled` cached at game start in `_SoloGameScreenState`
-  - `SoundService._soundsEnabled` / `SoundService._musicEnabled` cached via `SoundService.syncPreferences()` at game start
-  - `SoundService.applyPreferences()` updates the cache immediately when a Settings toggle fires (before async disk write completes)
-  - The Settings screen's `_loadPreferences()` also calls `applyPreferences()` so the cache is correct from app launch
-- Answer grid uses GridView.count with asymmetric BorderRadius.only(...) per cell position
+- Haptic and sound calls must be synchronous — cache the preference once, never call async inside a timer tick. `_hapticsEnabled` is cached at game start in `_SoloGameScreenState`; `SoundService` caches `sounds_enabled`/`music_enabled` via `syncPreferences()` at game start and `applyPreferences()` whenever a Settings toggle fires (before the async disk write completes)
+- Answer grid uses `GridView.count` with asymmetric `BorderRadius.only(...)` per cell position
 
 ## Flutter Code Standards
-- Always use const constructors wherever possible
+- Always use `const` constructors wherever possible
 - Separate each screen into its own file in lib/screens/
 - Use lib/theme/app_theme.dart for all colors and text styles
 - Never hardcode colors inline — always reference AppTheme
 - Always wrap scrollable content in SingleChildScrollView
 - Use MediaQuery for responsive sizing, never hardcode pixel sizes
-- Always dispose controllers in dispose() method
+- Always dispose controllers in `dispose()`
 - File naming: snake_case for all files
 
 ## Folder Structure (lib/)
+```
 lib/
-├── main.dart               ← app entry + BlaziQApp + _AppRouter (routes to shell or onboarding)
+├── main.dart                    ← app entry + BlaziQApp + _AppRouter (routes to shell or onboarding)
 ├── theme/
-│   └── app_theme.dart      ← all colors, text styles, ThemeData (light theme)
+│   └── app_theme.dart           ← all colors, text styles, ThemeData
 ├── screens/
-│   ├── main_shell.dart     ← MainShell + curved nav bar (extracted from main.dart)
-│   ├── welcome_screen.dart ← first-launch screen for anonymous users (Google / Guest)
-│   ├── name_picker_screen.dart ← mandatory display name picker (all new users)
+│   ├── main_shell.dart          ← MainShell + curved nav bar
+│   ├── welcome_screen.dart      ← first-launch screen for anonymous users (Google / Guest)
+│   ├── name_picker_screen.dart  ← mandatory display name picker
 │   ├── home_screen.dart
 │   ├── profile_screen.dart
 │   ├── rank_screen.dart
 │   ├── store_screen.dart
 │   ├── menu_screen.dart
 │   ├── solo_game_screen.dart
-│   ├── how_to_play_screen.dart ← full-screen modal from Settings → How To Play; 4 sections with fade+scale entrance
-│   └── about_screen.dart      ← full-screen modal from Settings → About; logo, story, built-by, contact + legal links
+│   ├── how_to_play_screen.dart  ← full-screen modal from Settings
+│   └── about_screen.dart        ← full-screen modal from Settings
 ├── widgets/
-│   └── animated_background.dart ← Lottie animated background (Stack + background.json);
-│                                   applied to all 5 nav screens + welcome + name_picker;
-│                                   NOT applied to solo/friend game screens or lobby/host/join
+│   ├── animated_background.dart ← Lottie background; on all 5 nav screens + welcome + name_picker,
+│   │                               not on solo/friend game screens or lobby/host/join
+│   └── hot_badge.dart           ← HOT 🔥 pill for isHot categories
 └── services/
-    ├── auth_service.dart         ← anonymous sign-in, Google Sign-In, account linking
-    ├── user_service.dart         ← Firestore CRUD, level/XP math, country detection
-    ├── display_name_service.dart ← displayName claim/release/availability/cooldown
-    ├── question_service.dart     ← Firestore question/category fetching, seen tracking,
-    │                                local JSON fallback (see Question Architecture)
+    ├── auth_service.dart          ← anonymous sign-in, Google Sign-In, account linking
+    ├── user_service.dart          ← Firestore CRUD, level/XP math, country detection
+    ├── display_name_service.dart  ← displayName claim/release/availability/cooldown
+    ├── question_service.dart      ← Firestore question/category fetching, seen tracking, JSON fallback
     ├── remote_config_service.dart ← Firebase Remote Config wrapper (version gating)
-    ├── room_service.dart         ← friend mode room lifecycle + game logic
-    ├── sound_service.dart        ← audioplayers wrapper; SFX + background music
-    └── preferences_service.dart  ← shared_preferences wrapper; sounds/music/haptics
+    ├── room_service.dart          ← friend mode room lifecycle + game logic
+    ├── sound_service.dart         ← audioplayers wrapper; SFX + background music
+    └── preferences_service.dart   ← shared_preferences wrapper; sounds/music/haptics/language
+```
 
-widgets/ also includes hot_badge.dart (HOT 🔥 pill for isHot categories)
+## Current Status
+Phases 1–6.5 complete. App live on Google Play. Next: Phase 7, Online matchmaking.
 
-## Project Status
+## Roadmap
+- **Phase 7** — Online matchmaking: random opponent matching + online leaderboard ratings
+- **Phase 8** — Kahoot mode: one host, multiple players join via room code, answer simultaneously in real time
+- **Phase 9** — Store + in-app purchases
+- **Phase 10** — Final polish, App Store (iOS) submission
 
-### Completed
-- Flutter project created (com.blaziq.blaziq)
-- Phase 1: App shell — navigation bar and all 5 screen layouts
-- Phase 2: Solo game mode (Open Trivia DB API + game logic) — COMPLETE
-  - ✅ Question fetching with HTML entity decoding
-  - ✅ Endless time-based gameplay with auto-prefetch (<3 questions remaining)
-  - ✅ Circular countdown timer with pulse animation
-  - ✅ Pre-game countdown overlay (3, 2, 1, GO!)
-  - ✅ Difficulty escalation (Easy → Medium at 5 correct → Hard at 10 correct)
-  - ✅ Floating feedback animations (+4s / -3s flies upward with scale pop + fade)
-  - ✅ Timer bump animation (scale + color flash when floating text arrives)
-  - ✅ Streak indicator as Stack/Positioned overlay (never shifts layout)
-  - ✅ Developer cheat mode (7 rapid taps on logo within 3s, 5 cheat buttons in game)
-  - ✅ Results screen with full 3-currency rewards (score, XP, coins)
-- Phase 3: Firebase Auth + Google Sign-In + Anonymous Auth — COMPLETE
-  - ✅ firebase_core, firebase_auth, cloud_firestore, google_sign_in packages added
-  - ✅ Firebase project blaziq-1822 configured
-  - ✅ auth_service.dart — anonymous sign-in, Google Sign-In with account linking,
-       migration fallback, sign-out re-enters anonymous auth
-  - ✅ user_service.dart — ensureUserDoc, upgradeToGoogle, mergeAnonData, saveGameResult
-  - ✅ profile_screen.dart — anonymous and Google states; signed-out state never shown
-  - ✅ Three-currency scoring system: score, XP (with level-up), coins (with daily bonus)
-  - ✅ Home header bar: avatar + coins + XP bar, live from Firestore
-  - ✅ Results screen saves to Firestore after every game
-  - ✅ Bottom nav bar: floating 5-circle pill (262×54px), white, purple drop shadow, electricBlue selected circle, fade animation
-- Phase 4: Solo Leaderboard — COMPLETE
-  - ✅ leaderboard Firestore collection — written by saveGameResult() after every game
-  - ✅ effectiveBest = max(score, currentBest) seeds existing users immediately
-  - ✅ leaderboardStream() — live ordered query powering Rank screen
-  - ✅ Rank screen: podium (top 3) + scrollable list (4th+), current user highlighted
-  - ✅ Worldwide / Canada / Friends tabs
-  - ✅ Pre-game countdown: CANCEL button + Android back button blocked (PopScope)
-  - ✅ Android back button during game: triggers quit confirmation dialog
-  - ✅ OpenTDB HTTP 429 auto-retry after 5s
-- App icon + splash screen — COMPLETE
-  - ✅ flutter_launcher_icons: adaptive icon (foreground + #1A1A2E background)
-  - ✅ flutter_native_splash: #1A1A2E background, Android 12 uses launcher icon
-  - ✅ Splash preserved until Firebase + anonymous auth ready, then removed
-  - ✅ Home screen logo: assets/images/inapp_logo.png (80×80)
-- Phase 5: Polish — COMPLETE
-  - ✅ Sound effects + background music (audioplayers ^6.0.0, SoundService)
-  - ✅ Haptics via HapticFeedback (no package); VIBRATE permission added
-  - ✅ Settings screen: audio/haptic toggles persist via shared_preferences
-  - ✅ Settings → Edit Profile navigates to Profile tab
-  - ✅ Settings → Sign Out: confirmation dialog for Google users; SnackBar for guests
-  - ✅ Settings → How To Play / About open full-screen modals
-  - ✅ Settings → Rate App opens Play Store listing (url_launcher, externalApplication)
-  - ✅ Settings → Share App opens native share sheet (share_plus ^10.0.0)
-  - ✅ Settings → Push / In-App Notifications toggles: UI only (not yet wired)
-  - ✅ Store screen replaced with Coming Soon placeholder (live coin balance kept)
-  - ✅ Developer cheat mode: 7 rapid taps on logo activates 5 in-game cheat buttons
-  - ✅ Google Sign-In username fix: displayName captured before credential creation,
-       _ensureDisplayName() writes it back after signInWithCredential (prevents 'Player' bug)
-  - ✅ Google Sign-In scope fix: GoogleSignIn(scopes: ['email', 'profile']) ensures
-       displayName is returned on Android (missing scopes caused null displayName)
-  - ✅ Country detection: ip-api.com IP lookup on doc creation, Android cleartext config,
-       refreshCountryIfStale() on launch fixes legacy 'CA' default for non-Canadian users
-  - ✅ Full light theme redesign — app-wide:
-       New palette (cloudWhite/electricBlue/blazeOrange/ink/steel — see Design System)
-       All fonts → Fira Sans w400–w800 (replaced New Amsterdam + Nunito)
-       auto_size_text ^3.0.0 for question card + answer buttons
-       Solo game: white top bar, timer white card, orange streak bounce pill,
-       AutoSizeText question card, 2×2 answer grid with asymmetric corner radii + scale press
-       All screens: light backgrounds, profile gradient removed, status bar dark icons
-
-- Phase 6 sync fix — COMPLETE
-  - ✅ Server-timestamp synchronization eliminates question timing desync between devices
-  - ✅ RoomData: gameStartedAt, buzzerPressedAt, nextQuestionAt, inheritedDeadlineAt fields
-  - ✅ pressBuzzer() writes buzzerPressedAt: FieldValue.serverTimestamp()
-  - ✅ submitAnswer() writes nextQuestionAt (now+4800ms) on transition; inheritedDeadlineAt (now+10s) on inherited
-  - ✅ nextQuestion() clears all phase timestamps, writes phaseStartedAt
-  - ✅ _startGameAsHost() writes gameStartedAt; game timer syncs to it once received
-  - ✅ _startBuzzerAnswerTimer(): counts to shared buzzerPressedAt+3s deadline
-  - ✅ _startInheritedTimer(): counts to shared inheritedDeadlineAt deadline
-  - ✅ _startGetReady(): counts to shared nextQuestionAt; both devices trigger at same instant
-
-- Phase 6: Friend Mode — COMPLETE
-  - ✅ Question JSON assets: assets/data/ — 4 categories, 100 questions each:
-       questions_science.json · questions_geography.json · questions_history.json · questions_general_knowledge.json
-       Fields: id, difficulty, question, correct_answer, incorrect_answers
-       Order: shuffled within each difficulty group (easy → medium → hard preserved)
-  - ✅ room_service.dart — full Firestore room lifecycle + game logic:
-       RoomService.createRoom / joinRoom / setReady / setUnready / updateCategory
-       pressBuzzer (first-write-wins; works for both 'buzzer' and 'sudden_death' phases)
-       submitAnswer (answering → transition; inherited → transition; sudden_death correct → finish,
-         wrong → other player wins)
-       nextQuestion (pre-loads asset JSON outside transaction)
-       _endGameWithTieCheck → sudden_death or endGame
-       endGame / updateHeartbeat / leaveRoom / saveFriendGameResult
-  - ✅ friend_mode_screen.dart — entry screen with HOST / JOIN buttons
-  - ✅ host_screen.dart — 4-category picker (Science 🔬 / Geography 🌍 / History 📜 / General Knowledge 🧠) in 2×2 grid + CREATE ROOM
-  - ✅ join_screen.dart — room code entry with UpperCaseTextFormatter + BLAZIQ- prefix auto-add
-  - ✅ lobby_screen.dart — waiting room: room code banner, player slots, category chips,
-       READY TO START / LEAVE ROOM, 3-s countdown overlay, PopScope back-button guard
-  - ✅ friend_game_screen.dart — full game screen:
-       3-min game timer, per-phase answer timers (3 s answering, 10 s inherited / sudden_death)
-       Buzzer button: pulsing red glow when active, green on win, grey/locked on loss
-       Phase state machine: buzzer → answering → inherited → transition → sudden_death → finished
-       Get-ready 3-s overlay between questions (host calls nextQuestion after countdown)
-       Sudden Death banner overlay when tied scores trigger sudden_death
-       Disconnection detection via heartbeat timestamps + 20 s countdown to auto-end
-       Answer grid: 2×2, asymmetric BorderRadius.only, greyed/active/correct/wrong/crossed states
-       Score cards: live scores side by side, winning player highlighted in electricBlue
-       Results screen with XP + coins rewards; HOME button returns to root
-  - ✅ home_screen.dart — Friend card (index 1) now tappable → FriendModeScreen;
-       COMING SOON ribbon removed; PLAY button added; Online card (index 2) still ribboned
-
-### Firestore rooms collection (Phase 6)
-  Document: {roomId}  (e.g. BLAZIQ-4829)
-    - hostUid / hostName / hostAvatar / hostLevel / hostScore / hostCorrect / hostReady / hostConnected
-    - guestUid / guestName / guestAvatar / guestLevel / guestScore / guestCorrect / guestReady / guestConnected
-    - category: string (any enabled Firestore category id)
-    - hostLanguage / guestLanguage: 'en' | 'fr' (each player's question language)
-    - status: 'waiting' | 'lobby' | 'countdown' | 'playing' | 'finished'
-    - currentQuestionIndex: number
-    - currentQuestion: { id, difficulty, translations: {en: {question,
-      correct_answer, incorrect_answers[]}, fr: {...}}, answerOrder: int[] }
-    - phase: 'buzzer' | 'answering' | 'inherited' | 'transition' | 'sudden_death' | 'finished'
-    - buzzerWinner: uid | null
-    - buzzerWrongIndex: int | null (canonical answer index of the wrong answer)
-    - winnerId: uid | null
-    - quitUid: uid | null  (set when a player confirms quit mid-game; cleared on resetForRematch)
-    - hostGamesWon / guestGamesWon: number (cumulative session wins)
-    - hostTotalScore / guestTotalScore: number (cumulative session scores)
-    - questions: array of 15 bilingual question maps (full session, fetched by
-      host via QuestionService and stored so both players play identical
-      questions; same shape as currentQuestion)
-    - totalQuestions: 15 (length of the stored session list)
-    - createdAt: timestamp
-
-### Friend Mode scoring (Phase 6)
-  Buzzer winner correct: +3 pts · wrong: -1 pt → inherited phase
-  Inheritor correct: +2 pts · wrong/timeout: 0 pts → transition phase
-  Sudden death: correct → game over (winner) · wrong → other player wins automatically
-  XP = correctAnswers × 8 + (winner ? 20 : 0)
-  Coins = correctAnswers × 2 + (winner ? 15 : 0)
-
-### Friend Mode UX details (Phase 6 polish)
-  - Difficulty pill hidden from game screen — category label shown only
-  - Answer buttons show idle (white/normal) style during buzzer phase — non-tappable, not greyed
-  - Correct answer NOT revealed when buzzer winner answers wrong — only revealed as a 1-second
-    flash at end of inherited phase, before the "Get ready" overlay
-  - Floating score animations: +3/+2/−1 text flies upward toward the scorer's card (800ms,
-    scale pop 1.0→1.4→1.0, fade out); plays before Get Ready countdown, not simultaneously
-  - Buzzer shake animation: ±3px rapid left-right shake while waiting for press; stops on press
-  - Buzzer countdown: once winner presses, countdown in tenths of second shown inside buzzer
-    circle (electricBlue, 28sp bold); loser sees grey lock icon + "Too slow!" label below
-  - Host badge: SVG pill (assets/icons/host_badge.svg, width 56) overlaid ON the
-    top-right corner of the host player card in lobby (Clip.none + Positioned -10/-10)
-  - Nickname picker: anonymous users without a valid username see a dialog before accessing
-    friend mode; username saved to Firestore users/{uid}.username
-  - Quitter flow: confirming quit calls quitGame() then shows _QuitResultsScreen with
-    "GO TO LOBBY" (calls resetForRematch → LobbyScreen) and "GO HOME" buttons
-  - Opponent sees quit overlay: "[Name] has left the game. You win!" with gold pulse animation;
-    auto-navigates to results after 3 seconds as winner
-  - Session scoreboard in lobby: shown after ≥1 game completed; displays wins + cumulative
-    score per player; persisted in hostGamesWon/guestGamesWon/hostTotalScore/guestTotalScore
-  - Results screen has 3 buttons: PLAY AGAIN / LEAVE TO LOBBY (both → lobby) / HOME
-
-- Phase 6.5 polish: Sign-out + Lottie background — COMPLETE
-  - ✅ Sign-out flow fixed: AuthService.onSignOut static callback fires after re-anonymous sign-in;
-       BlaziQApp (now StatefulWidget with GlobalKey<NavigatorState>) navigates to WelcomeScreen
-       with full stack clear — new anonymous sessions always go through name picker
-  - ✅ ensureUserDoc() for anonymous users writes minimal doc (no username, no displayName,
-       coins: 0) so _AppRouter always routes them to WelcomeScreen
-  - ✅ Sign-out dialog subtitle updated: 'You will need to choose a new nickname to continue as a guest.'
-  - ✅ Lottie animated background (lottie ^3.3.3): assets/animations/background.json
-       Applied via AnimatedBackground widget (lib/widgets/animated_background.dart) to all
-       5 nav screens (home, profile, rank, store, menu) + welcome + name_picker
-       Not applied to solo/friend game screens, lobby, host, or join screens
-       Scaffold backgroundColor: Colors.transparent on affected screens
-
-### Next
-- Phase 7: Online matchmaking (random opponent + online leaderboard)
-
-### Pending
-- Phase 7: Online matchmaking (random opponent + online leaderboard)
-- Phase 8: Kahoot mode (host + join + manual questions)
-- Phase 9: Store + in-app purchases
-- Phase 10: Final polish, App Store (iOS) submission
-
-Privacy link: https://doc-hosting.flycricket.io/blaziq-privacy-policy/11284ce3-7a2f-4a89-9d8b-33129af162b5/privacy
-Terms of use link: https://doc-hosting.flycricket.io/blaziq-terms-of-use/7bd62b5d-fd5d-412d-992c-5b4105c59595/terms
-Account deletion form: https://docs.google.com/forms/d/e/1FAIpQLScGVXJ20ZXmBww-w7RjyhLkG_Cl8OaZJINS1In8Wq0AkwU26g/viewform?usp=header
+## Links
+- Privacy policy: https://doc-hosting.flycricket.io/blaziq-privacy-policy/11284ce3-7a2f-4a89-9d8b-33129af162b5/privacy
+- Terms of use: https://doc-hosting.flycricket.io/blaziq-terms-of-use/7bd62b5d-fd5d-412d-992c-5b4105c59595/terms
+- Account deletion form: https://docs.google.com/forms/d/e/1FAIpQLScGVXJ20ZXmBww-w7RjyhLkG_Cl8OaZJINS1In8Wq0AkwU26g/viewform?usp=header
