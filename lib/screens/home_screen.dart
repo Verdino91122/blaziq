@@ -302,13 +302,26 @@ class _BrainLogoSectionState extends State<_BrainLogoSection> {
     _resetTimer?.cancel();
     if (_tapCount >= 7) {
       _tapCount = 0;
-      widget.onCheatToggle();
+      if (widget.cheatMode) {
+        widget.onCheatToggle(); // turning it back off needs no password
+      } else {
+        _promptForPassword();
+      }
       return;
     }
     // Reset counter if no tap within 3 seconds
     _resetTimer = Timer(const Duration(seconds: 3), () {
       _tapCount = 0;
     });
+  }
+
+  Future<void> _promptForPassword() async {
+    final unlocked = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => const _DevModePasswordDialog(),
+    );
+    if (unlocked == true) widget.onCheatToggle();
   }
 
   @override
@@ -335,6 +348,127 @@ class _BrainLogoSectionState extends State<_BrainLogoSection> {
               style: AppTheme.sectionHeader.copyWith(color: AppTheme.sparkPink),
             ),
           ),
+      ],
+    );
+  }
+}
+
+// ── Dev mode password dialog ──────────────────────────────────────────────────
+//
+// A dedicated StatefulWidget rather than an inline StatefulBuilder — this
+// owns its own FocusNode/TextEditingController with a normal dispose(), and
+// defers Navigator.pop to a post-frame callback after unfocusing. Popping a
+// dialog synchronously from within its own autofocused TextField's submit
+// callback can otherwise trip a '_dependents.isEmpty' framework assertion
+// (focus/IME teardown racing the route pop); autofillHints is also left
+// empty to keep Android's password-autofill save prompt out of the picture.
+class _DevModePasswordDialog extends StatefulWidget {
+  const _DevModePasswordDialog();
+
+  @override
+  State<_DevModePasswordDialog> createState() => _DevModePasswordDialogState();
+}
+
+class _DevModePasswordDialogState extends State<_DevModePasswordDialog> {
+  static const _devModePassword = '182222';
+
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _closeWith(bool result) {
+    _focusNode.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.pop(context, result);
+    });
+  }
+
+  void _submit() {
+    if (_controller.text == _devModePassword) {
+      _closeWith(true);
+    } else {
+      setState(() => _errorText = 'Incorrect password');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text('Dev Mode', style: AppTheme.subheading.copyWith(fontSize: 20), textAlign: TextAlign.center),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Enter the password to enable dev mode.', style: AppTheme.bodyMuted, textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            autofocus: true,
+            obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            autofillHints: const [],
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: AppTheme.rowLabel,
+            decoration: InputDecoration(
+              errorText: _errorText,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppTheme.deepGrey),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppTheme.electricBlue, width: 2),
+              ),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actionsAlignment: MainAxisAlignment.center,
+      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      actions: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GestureDetector(
+              onTap: _submit,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: AppTheme.electricBlue,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text('UNLOCK', textAlign: TextAlign.center, style: AppTheme.buttonLabel),
+              ),
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => _closeWith(false),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: AppTheme.softGrey,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.deepGrey),
+                ),
+                child: Text('Cancel', textAlign: TextAlign.center, style: AppTheme.buttonLabel.copyWith(color: AppTheme.steel)),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

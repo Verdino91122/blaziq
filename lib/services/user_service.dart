@@ -264,6 +264,7 @@ class UserService {
     required int coinsEarned,
     required bool isAnonymous,
     required String avatarUrl,
+    required String categoryId,
   }) async {
     final ref = _db.collection('users').doc(uid);
 
@@ -299,6 +300,9 @@ class UserService {
       'coins': FieldValue.increment(coinsEarned),
       'gamesPlayed': FieldValue.increment(1),
       'lastPlayedDate': _todayString(),
+      // Dotted path creates the categoryGamesPlayed map and/or the field on
+      // first write — FieldValue.increment handles missing fields.
+      'categoryGamesPlayed.$categoryId': FieldValue.increment(1),
     };
     if (score > currentBest) {
       updates['bestScore'] = score;

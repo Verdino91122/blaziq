@@ -40,7 +40,7 @@ A cross-platform trivia game built with Flutter and Firebase.
 | ink              | #1E1B4B   | Primary text                                   |
 | steel            | #6B7280   | Muted/secondary text, icons                    |
 
-Difficulty colors: easy = electricBlue · medium = #7C3AED (violet) · hard = blazeOrange
+Difficulty colors: easy/beginner = electricBlue · medium/advanced = #7C3AED (violet) · hard/expert = blazeOrange (the solo game's difficulty pill using these colors is dev-mode-only, see Adaptive Difficulty)
 Mode card gradient: white → #F0F4FF (light blue tint)
 Google brand colors and leaderboard avatar palette are unchanged.
 
@@ -89,7 +89,7 @@ Nav bar: floating 262×54px pill of 5 merged 54px circles, white fill, purple dr
 ### Home
 - Header bar: user avatar (electricBlue border), coins (star icon), XP progress bar with level number and title — all live from Firestore
 - Center: Blaziq logo (80×80) + "SELECT A MODE"
-- Developer cheat mode: tap the logo 7 times within 3 seconds → "DEV MODE" label appears and 5 cheat buttons become available in the solo game screen
+- Developer cheat mode: tap the logo 7 times within 3 seconds → password dialog (hardcoded `182222` in `_BrainLogoSectionState`) → on correct entry, "DEV MODE" label appears and 5 cheat buttons become available in the solo game screen. Turning it back off (another 7-tap) needs no password.
 - Swipeable carousel with 3 mode cards: Solo (functional) · Play with Friend (functional) · Play Online (COMING SOON ribbon, non-tappable)
 
 ### Solo Mode
@@ -97,11 +97,28 @@ Nav bar: floating 262×54px pill of 5 merged 54px circles, white fill, purple dr
 - Endless time-based mode, starts at 30s, no fixed question count
 - Correct answer time bonus, streak resets to 0 on any wrong answer: streak 1–2 → +4s · streak 3 → +6s · streak 4 → +8s · streak 5+ → +10s
 - Wrong answer: −3s, streak resets to 0
-- Difficulty pill follows the current question's own `difficulty` field; sessions arrive pre-ordered easy → medium → hard
+- Difficulty pill is hidden from real players; it only renders in dev mode (7-tap logo cheat) so the adaptive tier can be verified during testing
 - Quit (X button or Android back) shows a confirmation dialog; the timer keeps running while it's open
 - Pre-game countdown (3, 2, 1, GO!) with a CANCEL button; Android back is blocked during it
 - Scoring: see Scoring & Rewards
-- Questions: 15-question sessions from QuestionService, auto-prefetched when fewer than 3 remain; see Question Architecture
+- Questions: fetched one at a time on demand from QuestionService at the player's current tier; see Adaptive Difficulty and Question Architecture
+
+#### Adaptive Difficulty
+Replaces the old fixed 15-question (7 easy/5 medium/3 hard) session. `_SoloGameScreenState` tracks per-session state:
+- `_currentTier` — starts at the first tier in `QuestionService.tierOrder` ('beginner'); the 6 tiers, in order, are **beginner → easy → medium → advanced → hard → expert** (configurable, see `config/difficulty_rules` below)
+- `_advancementCounter` — starts at 0, or at `familiar_starting_counter` if `users/{uid}.categoryGamesPlayed.{categoryId} >= familiar_category_games` (a returning player skips grinding through 'beginner' again)
+- `_questionsInCurrentTier` — count of questions answered (right or wrong) at the current tier this session; gates tier changes below their minimum exposure
+
+On a correct answer: mark the question seen (only correct answers are ever marked, see Question Architecture), `_advancementCounter += 1`; if `_advancementCounter >= advancement_threshold` AND `_questionsInCurrentTier >= min_questions_per_tier`, advance one tier and reset both counters to 0.
+On a wrong answer: never mark seen, `_advancementCounter -= 1`; if `_advancementCounter <= regression_threshold`, drop one tier (reset both counters to 0) — unless already at 'beginner', in which case just reset the counter to 0 and stay put. A timeout (no answer) is treated like neither — it doesn't touch the counters and the on-screen question is left unmarked.
+Tier never changes for any reason other than the counter logic above — an empty question pool at a tier does **not** cause a drop to an easier tier.
+
+Question fetch order for `QuestionService.getQuestionForTier()` (never fails the game — always returns *something* if the tier has any questions at all):
+1. Unseen questions at the current tier, excluding the just-shown question ID
+2. If none: previously wrong-answered questions at that tier that still aren't seen (reinforcement — re-served even though excluded above)
+3. If still none: any question at that tier, seen filter ignored entirely
+
+Dev-mode cheat buttons `HARD`/`EASY` (7-tap logo cheat mode) jump `_currentTier` directly for testing — they affect only the *next* fetched question, not the one on screen.
 
 #### Sound effects (SoundService)
 - Background music loops at volume 0.4 once the countdown ends
@@ -152,7 +169,28 @@ users/{uid}
   gamesPlayed: number · bestScore: number
   country: string              — ISO 3166-1 alpha-2, via ip-api.com
   lastPlayedDate: string        — yyyy-MM-dd, for daily coin bonus
+  categoryGamesPlayed: map<string, number> — {categoryId: gamesPlayed}, incremented by
+    UserService.saveGameResult() via FieldValue.increment(1); missing/unset field is
+    handled automatically by increment(), read by the adaptive difficulty starting counter
   createdAt: timestamp
+
+config/app_settings
+  question_bank_version: string  — 'v1' (default) | 'v2'; selects questions/ vs questions_v2/
+    as the root collection for all question reads (session + adaptive fetch)
+
+config/difficulty_rules
+  tier_order: string[]                  — ordered tier names, default
+    ['beginner','easy','medium','advanced','hard','expert']; QuestionService
+    also accepts a 'tiers' key for the same purpose (generation tooling and
+    this service's original spec disagreed on the name — both are read)
+  advancement_threshold: number         — default 3
+  regression_threshold: number          — default -3
+  min_questions_per_tier: number        — default 3
+  familiar_category_games: number       — default 4
+  familiar_starting_counter: number     — default 1
+  Both config docs are fetched once per app launch by QuestionService.initConfig()
+  (fired fire-and-forget from main(), also awaited internally before any question
+  fetch) and cached for the process lifetime — never re-fetched mid-game.
 
 displayNames/{lowercaseName}
   uid: string · displayName: string (original casing)
@@ -169,8 +207,11 @@ categories/{categoryId}
   name: string · emoji: string · isHot: bool · totalQuestions: number
   enabled: bool · supportedLanguages: string[] (currently ['en','fr'])
 
-questions/{categoryId}/items/{questionId}   (e.g. science_easy_0001)
-  difficulty: 'easy'|'medium'|'hard' · category: string · createdAt
+questions/{categoryId}/items/{questionId}   (e.g. science_easy_0001) — 'v1' bank
+questions_v2/{categoryId}/items/{questionId}                          — 'v2' bank
+  (root collection selected at runtime by config/app_settings.question_bank_version)
+  difficulty: 'easy'|'medium'|'hard' (v1) or one of the 6 adaptive tiers (v2,
+    see Adaptive Difficulty) · category: string · createdAt
   en: { question, correct_answer, incorrect_answers[] }
   fr: { question, correct_answer, incorrect_answers[] }
   ⚠️ en/fr incorrect_answers are NOT index-aligned (fr is a shuffled
@@ -196,7 +237,7 @@ rooms/{roomId}   (e.g. BLAZIQ-4829, friend mode)
 
 ### Firestore Security Rules (deployed to blaziq-1822)
 - `displayNames/{name}`: read open; create/update/delete require `request.auth.uid` to match the doc's `uid`
-- `questions/{categoryId}/items` and `categories`: read requires `request.auth != null`; writes denied (content is seeded out-of-band)
+- `questions/{categoryId}/items`, `questions_v2/{categoryId}/items`, `categories`, and `config/{document}`: read requires `request.auth != null`; writes denied (content is seeded/managed out-of-band). Any new top-level collection needs an explicit `match` block — Firestore denies unmatched paths by default, which is what broke adaptive difficulty until `questions_v2` and `config` rules were added.
 
 ## Display Name System
 - `displayName` is the canonical public identity field; `username` is frozen legacy — never overwritten or deleted
@@ -209,11 +250,13 @@ rooms/{roomId}   (e.g. BLAZIQ-4829, friend mode)
 ## Question Architecture
 `QuestionService` (lib/services/question_service.dart) is the sole source of trivia questions — bilingual, Firestore-backed, with a local JSON fallback.
 
-- `getSessionQuestions(categoryId, {language, excludeIds})` builds one 15-question session: 7 easy + 5 medium + 3 hard, shuffled within each tier, ordered easy → medium → hard. `language` ('en' default | 'fr') selects which language map the returned text comes from, falling back to 'en' then to flat legacy fields.
-- Seen tracking: shared_preferences key `seen_{categoryId}` holds answered/timed-out question IDs; `seen_reset_date` auto-clears all seen lists every 60 days. A session excludes seen IDs, topping up with seen ones only if a difficulty tier runs out.
-- `excludeIds` additionally excludes the current on-screen batch and any prefetched batch, so a single match can never repeat a question ID even if the seen-list write hasn't landed yet.
-- `markSeen()` / `markSeenAll()` are called on answer, on timeout, and (friend mode) at game end for every question ID shown in the room document.
-- Fallback: if Firestore is unreachable, loads `assets/data/questions_{category}.json` — English only, only the original 4 categories (science, geography, history, general_knowledge) ship as assets.
+- `initConfig()` fetches `config/app_settings` and `config/difficulty_rules` once and caches them for the app's lifetime (see Firebase Structure); `getQuestionBankVersion`-derived collection selection and all tier-rule getters (`tierOrder`, `advancementThreshold`, `regressionThreshold`, `minQuestionsPerTier`, `familiarCategoryGames`, `familiarStartingCounter`) read from this cache. Falls back to hardcoded defaults if either doc is missing or Firestore is unreachable — never throws.
+- `getQuestionForTier(categoryId, tier, {language, seenIds, wrongIds, excludeIds})` — solo mode's on-demand single-question fetch used by the adaptive difficulty system (see Solo Mode). See that section for the 3-step fallback order; returns null only if the tier has zero questions.
+- `getSessionQuestions(categoryId, {language, excludeIds})` — still used by friend mode (`RoomService`) to build one 15-question session: 7 easy + 5 medium + 3 hard, shuffled within each tier, ordered easy → medium → hard. `language` ('en' default | 'fr') selects which language map the returned text comes from, falling back to 'en' then to flat legacy fields.
+- Seen tracking: shared_preferences key `seen_{categoryId}` holds seen question IDs, each stored prefixed with the question bank version they were seen under (e.g. `v1:science_easy_0001`); `getSeenIds()` only returns/strips entries matching the *current* `question_bank_version` prefix, so bumping `config/app_settings.question_bank_version` (v1 → v2) automatically gives every user a fresh seen-list — old-version entries are simply never read back (they're left in storage, not deleted). `seen_reset_date` separately auto-clears all seen lists every 30 days regardless of version. A session excludes seen IDs, topping up with seen ones only if a difficulty tier runs out.
+- `excludeIds` additionally excludes the current on-screen batch and any prefetched batch (friend mode) or just the previously-shown question (solo adaptive fetch), so a match can never repeat a question ID even if the seen-list write hasn't landed yet.
+- `markSeen(categoryId, questionId, {required wasCorrect})` only writes when `wasCorrect: true` — a wrong answer or a timeout must stay eligible to reappear (and be preferentially re-served for reinforcement, see Adaptive Difficulty) until the player gets it right. `markSeenAll()` (friend mode, unconditional — marks every question ID shown at game end) is unaffected by this gating.
+- Fallback: if Firestore is unreachable, loads `assets/data/questions_{category}.json` — English only, only the original 4 categories (science, geography, history, general_knowledge) ship as assets, and only with 'easy'/'medium'/'hard' difficulty values (so the adaptive fetch's offline fallback only serves tiers named exactly that).
 - Friend mode: the host fetches the 15-question session once and stores it in the room doc so both players see identical questions. Answers are matched by canonical index (0 = correct, 1–3 = incorrect, language-independent) rather than text, since the en/fr incorrect-answer arrays aren't index-aligned. Each player can select their own language in the lobby, stored as `hostLanguage`/`guestLanguage`.
 
 Question generation script: C:\Users\user\Documents\blaziq_generator\bin\generate_questions_topup.dart — run from blaziq_generator directory (not bin subfolder).

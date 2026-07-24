@@ -43,8 +43,6 @@ class _Question {
 
 enum _GamePhase { loading, playing, result, error }
 
-enum _Difficulty { easy, medium, hard }
-
 enum _AnswerState { idle, correct, wrong }
 
 // ── Cheat callbacks ───────────────────────────────────────────────────────────
@@ -89,12 +87,13 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   String _errorMessage = '';
   bool _loadingNextBatch = false;
 
-  // ── Questions ─────────────────────────────────────────────────────────────
-  List<_Question> _questions = [];
-  int _qIndex = 0;
-  List<_Question> _nextBatch = [];
-  bool _prefetching = false;
-  _Difficulty _difficulty = _Difficulty.easy;
+  // ── Questions / adaptive difficulty ──────────────────────────────────────
+  _Question? _currentQuestion;
+  String _currentTier = 'beginner';
+  int _advancementCounter = 0;
+  int _questionsInCurrentTier = 0;
+  Set<String> _seenIds = {};
+  Set<String> _wrongIds = {}; // wrong-answered this session, never marked seen
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   int _timeRemaining = 30;
@@ -136,21 +135,37 @@ class _SoloGameScreenState extends State<SoloGameScreen>
 
   // ── Question fetching (Firestore via QuestionService) ────────────────────
 
-  /// Fetches one session (7 easy + 5 medium + 3 hard) from Firestore.
-  /// Questions currently on screen are excluded so a prefetched session
-  /// never repeats an unanswered question from the active one.
-  Future<List<_Question>> _fetchSession() async {
-    final exclude = {
-      ..._questions.map((q) => q.id),
-      ..._nextBatch.map((q) => q.id),
-    };
-    final session = await QuestionService.getSessionQuestions(
+  /// Fetches one question at [_currentTier], excluding [excludeId] (the
+  /// question just shown) so the same one never repeats back-to-back.
+  Future<_Question> _fetchNextQuestion({String? excludeId}) async {
+    final tq = await QuestionService.getQuestionForTier(
       widget.categoryId,
+      _currentTier,
       language: widget.language,
-      excludeIds: exclude,
+      seenIds: _seenIds,
+      wrongIds: _wrongIds,
+      excludeIds: excludeId != null ? {excludeId} : const {},
     );
-    if (session.isEmpty) throw Exception('No questions available.');
-    return session.map(_Question.fromTrivia).toList();
+    if (tq == null) throw Exception('No questions available.');
+    return _Question.fromTrivia(tq);
+  }
+
+  /// Moves to the next tier up (capped at the top of [QuestionService.tierOrder]).
+  void _advanceTier() {
+    final tiers = QuestionService.tierOrder;
+    final idx = tiers.indexOf(_currentTier);
+    if (idx >= 0 && idx < tiers.length - 1) _currentTier = tiers[idx + 1];
+    _advancementCounter = 0;
+    _questionsInCurrentTier = 0;
+  }
+
+  /// Drops to the tier below (never below the first/'beginner' tier).
+  void _dropTier() {
+    final tiers = QuestionService.tierOrder;
+    final idx = tiers.indexOf(_currentTier);
+    if (idx > 0) _currentTier = tiers[idx - 1];
+    _advancementCounter = 0;
+    _questionsInCurrentTier = 0;
   }
 
   // ── Game flow ─────────────────────────────────────────────────────────────
@@ -218,11 +233,12 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     setState(() {
       _phase = _GamePhase.loading;
       _errorMessage = '';
-      _questions = [];
-      _qIndex = 0;
-      _nextBatch = [];
-      _prefetching = false;
-      _difficulty = _Difficulty.easy;
+      _currentQuestion = null;
+      _currentTier = 'beginner';
+      _advancementCounter = 0;
+      _questionsInCurrentTier = 0;
+      _seenIds = {};
+      _wrongIds = {};
       _timeRemaining = 30;
       _finalScore = 0;
       _correctCount = 0;
@@ -245,23 +261,51 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     PreferencesService.getHapticsEnabled().then((v) => _hapticsEnabled = v);
     SoundService.syncPreferences();  // prime the cache before game starts
 
-    final user = AuthService.currentUser;
-    if (user != null) {
-      UserService.getUserData(user.uid).then((data) => _userDataSnapshot = data).catchError((_) => null);
-    }
-
     try {
-      final questions = await _fetchSession();
+      await QuestionService.initConfig();
+
+      final user = AuthService.currentUser;
+      Map<String, dynamic>? userData;
+      if (user != null) {
+        userData = await UserService.getUserData(user.uid);
+      }
+      _userDataSnapshot = userData;
+
+      // Players already familiar with this category start with a head start
+      // on the advancement counter instead of grinding through 'beginner' again.
+      final categoryGames = ((userData?['categoryGamesPlayed']
+              as Map?)?[widget.categoryId] as num?)
+          ?.toInt() ??
+          0;
+      final startingCounter =
+          categoryGames >= QuestionService.familiarCategoryGames
+              ? QuestionService.familiarStartingCounter
+              : 0;
+
+      final tiers = QuestionService.tierOrder;
+      final startTier = tiers.isNotEmpty ? tiers.first : 'beginner';
+      final seen = (await QuestionService.getSeenIds(widget.categoryId)).toSet();
+
+      final first = await QuestionService.getQuestionForTier(
+        widget.categoryId,
+        startTier,
+        language: widget.language,
+        seenIds: seen,
+        wrongIds: const {},
+      );
+      if (first == null) throw Exception('No questions available.');
+
       if (!mounted) return;
       setState(() {
-        _questions = questions;
-        _difficulty = _difficultyOf(questions.first);
+        _seenIds = seen;
+        _currentTier = startTier;
+        _advancementCounter = startingCounter;
+        _currentQuestion = _Question.fromTrivia(first);
         _phase = _GamePhase.playing;
         _countingDown = true;
         _countdownValue = 3;
         _countdownOverlayVisible = true;
       });
-      _maybePrefetch();
       _runCountdown(_countdownGeneration);
     } catch (e) {
       if (!mounted) return;
@@ -316,10 +360,8 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     _feedbackTimer?.cancel();
     _streakBounceCtrl.stop();
 
-    // Timer can run out with an unanswered question on screen — mark it too.
-    if (!_answered && _qIndex < _questions.length) {
-      QuestionService.markSeen(widget.categoryId, _questions[_qIndex].id);
-    }
+    // A timeout is not a correct answer, so the on-screen question (if any)
+    // is deliberately left unmarked — only correct answers get marked seen.
     SoundService.stopTicToc();
     SoundService.stopBackgroundMusic();
     SoundService.playGameOver();
@@ -342,6 +384,7 @@ class _SoloGameScreenState extends State<SoloGameScreen>
         coinsEarned: coins,
         isAnonymous: user.isAnonymous,
         avatarUrl: user.photoURL ?? '',
+        categoryId: widget.categoryId,
       ).catchError((_) {});
     }
 
@@ -358,13 +401,21 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     if (_answered || _phase != _GamePhase.playing) return;
     _countdownTimer?.cancel();
 
-    // Never show this question again on this device (fire-and-forget).
-    QuestionService.markSeen(widget.categoryId, _questions[_qIndex].id);
-
-    final isCorrect = answer == _questions[_qIndex].correct;
+    final question = _currentQuestion!;
+    final isCorrect = answer == question.correct;
     int newTime = _timeRemaining;
 
+    // Every answered question counts toward the current tier's minimum
+    // exposure, regardless of whether it was answered correctly.
+    _questionsInCurrentTier++;
+
     if (isCorrect) {
+      // Only correct answers are marked seen (fire-and-forget) — a wrong
+      // answer must stay eligible to reappear for reinforcement.
+      QuestionService.markSeen(widget.categoryId, question.id, wasCorrect: true);
+      _seenIds.add(question.id);
+      _wrongIds.remove(question.id);
+
       _correctCount++;
       _currentStreak++;
       if (_currentStreak > _highestStreak) _highestStreak = _currentStreak;
@@ -403,7 +454,18 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       if (_currentStreak >= 2 && !_streakBounceCtrl.isAnimating) {
         _streakBounceCtrl.repeat();
       }
+
+      _advancementCounter++;
+      if (_advancementCounter >= QuestionService.advancementThreshold &&
+          _questionsInCurrentTier >= QuestionService.minQuestionsPerTier) {
+        _advanceTier();
+      }
     } else {
+      // Never marked seen — QuestionService.markSeen is a deliberate no-op
+      // for wrong answers, called explicitly to keep the call site honest.
+      QuestionService.markSeen(widget.categoryId, question.id, wasCorrect: false);
+      _wrongIds.add(question.id);
+
       _wrongCount++;
       _currentStreak = 0;
       newTime -= 3;
@@ -415,6 +477,15 @@ class _SoloGameScreenState extends State<SoloGameScreen>
       // Stop streak bounce
       _streakBounceCtrl.stop();
       _streakBounceCtrl.reset();
+
+      _advancementCounter--;
+      if (_advancementCounter <= QuestionService.regressionThreshold) {
+        if (_currentTier != QuestionService.tierOrder.first) {
+          _dropTier();
+        } else {
+          _advancementCounter = 0;
+        }
+      }
     }
 
     setState(() {
@@ -433,66 +504,30 @@ class _SoloGameScreenState extends State<SoloGameScreen>
     });
   }
 
-  /// Difficulty pill follows the current question (sessions come pre-ordered
-  /// easy → medium → hard from QuestionService).
-  static _Difficulty _difficultyOf(_Question q) => switch (q.difficulty) {
-    'hard' => _Difficulty.hard,
-    'medium' => _Difficulty.medium,
-    _ => _Difficulty.easy,
-  };
-
   Future<void> _advanceQuestion() async {
     if (!mounted) return;
 
-    _qIndex++;
-
-    if (_qIndex >= _questions.length) {
-      if (_nextBatch.isNotEmpty) {
-        setState(() {
-          _questions = _nextBatch;
-          _nextBatch = [];
-          _qIndex = 0;
-          _prefetching = false;
-          _difficulty = _difficultyOf(_questions[0]);
-          _selectedAnswer = null;
-          _answered = false;
-        });
-        _startCountdown();
-        _maybePrefetch();
-      } else {
-        setState(() {
-          _loadingNextBatch = true;
-          _selectedAnswer = null;
-          _answered = false;
-        });
-        try {
-          final batch = await _fetchSession();
-          if (!mounted) return;
-          setState(() {
-            _questions = batch;
-            _qIndex = 0;
-            _difficulty = _difficultyOf(batch[0]);
-            _loadingNextBatch = false;
-          });
-          _startCountdown();
-          _maybePrefetch();
-        } catch (e) {
-          if (!mounted) return;
-          setState(() {
-            _phase = _GamePhase.error;
-            _errorMessage = 'Failed to load more questions.';
-            _loadingNextBatch = false;
-          });
-        }
-      }
-    } else {
+    final lastId = _currentQuestion?.id;
+    setState(() {
+      _loadingNextBatch = true;
+      _selectedAnswer = null;
+      _answered = false;
+    });
+    try {
+      final next = await _fetchNextQuestion(excludeId: lastId);
+      if (!mounted) return;
       setState(() {
-        _difficulty = _difficultyOf(_questions[_qIndex]);
-        _selectedAnswer = null;
-        _answered = false;
+        _currentQuestion = next;
+        _loadingNextBatch = false;
       });
       _startCountdown();
-      _maybePrefetch();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _GamePhase.error;
+        _errorMessage = 'Failed to load more questions.';
+        _loadingNextBatch = false;
+      });
     }
   }
 
@@ -523,32 +558,27 @@ class _SoloGameScreenState extends State<SoloGameScreen>
   void _cheatAddTime() => setState(() => _timeRemaining = (_timeRemaining + 30).clamp(0, 9999));
   void _cheatForceCorrect() {
     if (_answered || _phase != _GamePhase.playing) return;
-    _onAnswer(_questions[_qIndex].correct);
+    _onAnswer(_currentQuestion!.correct);
   }
   void _cheatForceWrong() {
     if (_answered || _phase != _GamePhase.playing) return;
-    final wrong = _questions[_qIndex].answers.firstWhere((a) => a != _questions[_qIndex].correct);
+    final wrong = _currentQuestion!.answers.firstWhere((a) => a != _currentQuestion!.correct);
     _onAnswer(wrong);
   }
-  void _cheatSetHard() => setState(() => _difficulty = _Difficulty.hard);
-  void _cheatSetEasy() => setState(() => _difficulty = _Difficulty.easy);
-
-  void _maybePrefetch() {
-    if (_prefetching || _nextBatch.isNotEmpty) return;
-    if (_questions.length - _qIndex > 3) return;
-    _prefetching = true;
-    _fetchSession()
-        .then((batch) {
-          if (!mounted) return;
-          setState(() {
-            _nextBatch = batch;
-            _prefetching = false;
-          });
-        })
-        .catchError((_) {
-          _prefetching = false;
-        });
-  }
+  // Dev-only tier jumps (next fetched question only — the on-screen one is
+  // unaffected) so the adaptive system can be exercised without grinding.
+  void _cheatSetHard() => setState(() {
+    final tiers = QuestionService.tierOrder;
+    _currentTier = tiers.contains('hard') ? 'hard' : (tiers.isNotEmpty ? tiers.last : _currentTier);
+    _advancementCounter = 0;
+    _questionsInCurrentTier = 0;
+  });
+  void _cheatSetEasy() => setState(() {
+    final tiers = QuestionService.tierOrder;
+    _currentTier = tiers.isNotEmpty ? tiers.first : _currentTier;
+    _advancementCounter = 0;
+    _questionsInCurrentTier = 0;
+  });
 
   // ── Navigation helpers ────────────────────────────────────────────────────
 
@@ -644,8 +674,8 @@ class _SoloGameScreenState extends State<SoloGameScreen>
           _GamePhase.playing => Stack(
             children: [
               _GameView(
-                question: _questions[_qIndex],
-                difficulty: _difficulty,
+                question: _currentQuestion!,
+                tier: _currentTier,
                 liveScore: _liveScore,
                 timeRemaining: _timeRemaining,
                 currentStreak: _currentStreak,
@@ -744,7 +774,7 @@ class _ErrorView extends StatelessWidget {
 
 class _GameView extends StatelessWidget {
   final _Question question;
-  final _Difficulty difficulty;
+  final String tier;
   final int liveScore;
   final int timeRemaining;
   final int currentStreak;
@@ -760,7 +790,7 @@ class _GameView extends StatelessWidget {
 
   const _GameView({
     required this.question,
-    required this.difficulty,
+    required this.tier,
     required this.liveScore,
     required this.timeRemaining,
     required this.currentStreak,
@@ -775,10 +805,12 @@ class _GameView extends StatelessWidget {
     this.streakBounceAnim,
   });
 
-  Color get _difficultyColor => switch (difficulty) {
-    _Difficulty.easy => AppTheme.difficultyEasy,
-    _Difficulty.medium => AppTheme.difficultyMedium,
-    _Difficulty.hard => AppTheme.difficultyHard,
+  // Dev-mode-only pill color; the 6-tier system buckets down to the 3
+  // existing difficulty colors since AppTheme only defines those.
+  Color get _tierColor => switch (tier) {
+    'hard' || 'expert' => AppTheme.difficultyHard,
+    'medium' || 'advanced' => AppTheme.difficultyMedium,
+    _ => AppTheme.difficultyEasy,
   };
 
   _AnswerState _stateFor(String answer) {
@@ -820,33 +852,36 @@ class _GameView extends StatelessWidget {
                         child: const Icon(Icons.close_rounded, color: AppTheme.ink, size: 22),
                       ),
                       const Spacer(),
-                      // Difficulty pill: small dot + label in ink
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.softGrey,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: _difficultyColor,
-                                shape: BoxShape.circle,
+                      // Difficulty/tier pill — dev mode only, so testers can
+                      // verify the adaptive system; hidden from real players.
+                      if (cheats != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.softGrey,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _tierColor,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              difficulty.name.toUpperCase(),
-                              style: AppTheme.difficultyBadge,
-                            ),
-                          ],
+                              const SizedBox(width: 6),
+                              Text(
+                                tier.toUpperCase(),
+                                style: AppTheme.difficultyBadge,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const Spacer(),
+                        const Spacer(),
+                      ],
                       // Score pill: softGrey bg, orange star + orange score
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

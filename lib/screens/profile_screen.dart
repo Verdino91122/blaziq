@@ -43,74 +43,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await AuthService.signOut();
   }
 
-  Future<void> _handleDeleteAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.cardSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete Account?',
-          style: AppTheme.subheading.copyWith(fontSize: 20),
-          textAlign: TextAlign.center,
-        ),
-        content: Text(
-          'This will permanently delete your progress, coins, XP, and leaderboard ranking. '
-          'This cannot be undone.',
-          style: AppTheme.bodyMuted,
-          textAlign: TextAlign.center,
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        actions: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(ctx, false),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  decoration: BoxDecoration(
-                    color: AppTheme.softGrey,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Cancel',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.buttonLabel
-                        .copyWith(color: AppTheme.mutedText),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: () => Navigator.pop(ctx, true),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDC2626).withAlpha(20),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: const Color(0xFFDC2626).withAlpha(80)),
-                  ),
-                  child: Text(
-                    'Delete Account',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.buttonLabel
-                        .copyWith(color: const Color(0xFFDC2626)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    await AuthService.deleteAccount();
-    // onSignOut callback inside deleteAccount() navigates to WelcomeScreen.
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -131,7 +63,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : _SignedInView(
                       user: user,
                       onSignOut: _handleSignOut,
-                      onDeleteAccount: _handleDeleteAccount,
                     ),
             ),
           ),
@@ -324,12 +255,10 @@ class _AnonView extends StatelessWidget {
 class _SignedInView extends StatelessWidget {
   final User user;
   final VoidCallback onSignOut;
-  final VoidCallback onDeleteAccount;
 
   const _SignedInView({
     required this.user,
     required this.onSignOut,
-    required this.onDeleteAccount,
   });
 
   void _confirmSignOut(BuildContext context, VoidCallback onConfirm) {
@@ -450,36 +379,6 @@ class _SignedInView extends StatelessWidget {
                     style: AppTheme.buttonLabel.copyWith(
                       color: const Color.fromARGB(255, 249, 111, 22),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: onDeleteAccount,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.delete_forever_rounded,
-                        color: Color(0xFFDC2626),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Delete Account',
-                        textAlign: TextAlign.center,
-                        style: AppTheme.buttonLabel.copyWith(
-                          color: const Color(0xFFDC2626),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),

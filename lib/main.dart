@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/question_service.dart';
 import 'services/remote_config_service.dart';
 import 'services/user_service.dart';
 import 'theme/app_theme.dart';
@@ -22,6 +23,10 @@ void main() async {
   // Fire-and-forget: RemoteConfigService.init() swallows its own errors and
   // must never delay startup.
   unawaited(RemoteConfigService.init());
+  // Fire-and-forget: caches question_bank_version + difficulty_rules once
+  // per app launch. QuestionService awaits the same future internally, so a
+  // slow/failed fetch here never blocks it — it just re-awaits when needed.
+  unawaited(QuestionService.initConfig());
   final authError = await AuthService.ensureAnonymousSignIn();
   if (authError != null) debugPrint('[Blaziq] Anonymous auth failed: $authError');
 
